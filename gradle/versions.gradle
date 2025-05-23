@@ -1,0 +1,44 @@
+/* * * * * * * * * * * * * * * * *
+ * Default project info
+ * * * * * * * * * * * * * * * * */
+def defaultVersion = "0.0.1"
+def defaultGroup = "eu.codlab"
+
+def propSuffix = { prefix, suffixKeyName ->
+    return rootProject.properties.containsKey(suffixKeyName)
+            ? "${prefix}-${rootProject.properties[suffixKeyName]}" : prefix
+}
+
+def repo = "vopenia/kotlin-meet-sdk"
+
+ext {
+    javaVersion = "17"
+    prop = { name, defValue ->
+        return rootProject.properties.containsKey(name)
+                ? rootProject.properties[name] : defValue
+    }
+
+    pomDescription = "Kotlin Multiplatform HttpClient"
+    pomInceptionYear = "${new Date().format("YYYY")}"
+    pomUrl = "https://github.com/$repo"
+    pomLicenseName = "MIT License"
+    pomLicenseUrl = "https://github.com/$repo/blob/main/LICENSE"
+    pomLicenseDistribution = ""
+    pomDeveloperId = "Blip"
+    pomDeveloperName = "Kevin Le Perf"
+    pomDeveloperOrganization = "Vopenia"
+    pomDeveloperOrganizationUrl = "https://vopenia.io"
+    pomScmUrl = "scm:git:github.com/${repo}.git"
+
+    sonarUrl = prop("sonarUrl", null)
+    sonarToken = prop("sonarToken", null)
+
+    signingKeyId = prop("signing.keyId", null)
+
+    group = prop("GROUP_ID", defaultGroup)
+    version = propSuffix(defaultVersion, "SUFFIX")
+    originalVersion = defaultVersion
+
+    projectVersionCode = 1
+    publishWithSources = true
+}
