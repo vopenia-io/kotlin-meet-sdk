@@ -33,11 +33,14 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(additionals.multiplatform.http.client)
+                implementation(additionals.kotlinx.coroutines)
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(additionals.kotlinx.coroutines.test)
+                implementation(projects.konfig)
             }
         }
     }

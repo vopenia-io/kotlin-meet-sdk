@@ -6,6 +6,8 @@ pluginManagement {
     }
 }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 def commonProps = new Properties()
 new File(rootProject.projectDir, "gradle.properties").withInputStream { commonProps.load(it) }
 ext.GRADLE_EXTENDED_VERSION_USED = commonProps.getProperty("GRADLE_EXTENDED_VERSION_USED")
@@ -26,4 +28,6 @@ dependencyResolutionManagement {
 
 includeBuild "gradle/extended/${ext.GRADLE_EXTENDED_VERSION_USED}/kt-plugins"
 
+rootProject.name = "sdk"
 include("kotlin-meet-sdk")
+include("konfig")
