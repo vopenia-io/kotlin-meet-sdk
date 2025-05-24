@@ -1,7 +1,7 @@
 package io.vopenia.api.users
 
+import io.vopenia.api.utils.log.LogSession
 import io.vopenia.client.Api
-import io.vopenia.konfig.Konfig
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
@@ -9,7 +9,12 @@ class ApiUserTests {
     val api = Api(
         "http://localhost:8071/api/v1.0",
         enableHttpLogs = true
-    ) { Konfig.cookieToken }
+    ) {
+        LogSession().getAuthenticateAnswer(
+            "meet",
+            "meet"
+        )
+    }
 
     @Test
     fun testUsers() = runTest {

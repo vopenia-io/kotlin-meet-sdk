@@ -30,4 +30,3 @@ includeBuild "gradle/extended/${ext.GRADLE_EXTENDED_VERSION_USED}/kt-plugins"
 
 rootProject.name = "sdk"
 include("kotlin-meet-sdk")
-include("konfig")

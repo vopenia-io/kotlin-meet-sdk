@@ -34,13 +34,14 @@ kotlin {
             dependencies {
                 api(additionals.multiplatform.http.client)
                 implementation(additionals.kotlinx.coroutines)
+                implementation(additionals.kotlinx.serialization.json)
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(additionals.multiplatform.file.access)
                 implementation(additionals.kotlinx.coroutines.test)
-                implementation(projects.konfig)
             }
         }
     }
