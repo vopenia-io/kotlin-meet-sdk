@@ -1,4 +1,4 @@
-package io.vopenia.api.utils.log
+package io.vopenia.konfig
 
 import eu.codlab.http.Configuration
 import eu.codlab.http.createClient
@@ -10,7 +10,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Parameters
 import io.ktor.http.Url
-import io.vopenia.client.AuthenticationInformation
 
 class LogSession {
     private val cookieStorage = AcceptAllCookiesStorage()
@@ -56,6 +55,9 @@ class LogSession {
         val redirectAnswer = clientWithoutRedirects.get(redirectRealms)
 
         val content = redirectAnswer.bodyAsText()
+
+        println("redirectRealms -> $redirectRealms")
+        println(content)
 
         val forms = content.split("<form")
         val action = forms[1].split("action=\"")

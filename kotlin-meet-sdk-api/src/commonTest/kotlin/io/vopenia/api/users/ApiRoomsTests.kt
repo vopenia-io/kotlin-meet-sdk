@@ -3,9 +3,11 @@ package io.vopenia.api.users
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.api.rooms.models.RequestEntryStatus
 import io.vopenia.api.rooms.models.RoomAccessLevel
-import io.vopenia.api.utils.log.LogSession
+import io.vopenia.api.utils.GetTokens
+import io.vopenia.api.utils.getAllRooms
 import io.vopenia.client.Api
 import io.vopenia.client.AuthenticationInformation
+import io.vopenia.konfig.Konfig
 import korlibs.time.DateTime
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -21,27 +23,30 @@ class ApiRoomsTests {
     var kleperfToken: AuthenticationInformation? = null
 
     val apiOwnerMeet = Api(
-        "http://localhost:8071/api/v1.0",
-        enableHttpLogs = true
+        "${Konfig.tunnelApiForwarder}/api/v1.0",
+        // "http://localhost:8071/api/v1.0",
+        enableHttpLogs = false
     ) {
-        ownerToken ?: LogSession().getAuthenticateAnswer("meet", "meet").also {
+        ownerToken ?: GetTokens("meet", "meet").also {
             ownerToken = it
         }
     }
 
     val apiOwnerKleperf = Api(
-        "http://localhost:8071/api/v1.0",
+        "${Konfig.tunnelApiForwarder}/api/v1.0",
+        // "http://localhost:8071/api/v1.0",
         enableHttpLogs = true
     ) {
-        kleperfToken ?: LogSession().getAuthenticateAnswer("kleperf", "kleperf").also {
-            kleperfToken = it
+        ownerToken ?: GetTokens("kleperf", "kleperf").also {
+            ownerToken = it
         }
     }
 
     @Test
     fun testRooms() = runTest {
         // passing test means that we won't have creds or serialization issues for now
-        val rooms = apiOwnerMeet.rooms.rooms()
+        var rooms = getAllRooms(apiOwnerMeet)
+
         println(apiOwnerMeet.rooms.rooms())
 
         val newRoom = apiOwnerMeet.rooms.createRoom(
@@ -53,7 +58,7 @@ class ApiRoomsTests {
         )
         println(newRoom)
 
-        val newRooms = apiOwnerMeet.rooms.rooms()
+        val newRooms = getAllRooms(apiOwnerMeet)
         println(newRooms)
 
         val updated = apiOwnerMeet.rooms.updateRoom(
@@ -66,8 +71,8 @@ class ApiRoomsTests {
         )
 
         assertEquals(updated.name, "${newRoom.name}_updated")
-        assertNull(rooms.results.find { it.id == newRoom.id })
-        assertNotNull(newRooms.results.find { it.id == newRoom.id })
+        assertNull(rooms.find { it.id == newRoom.id })
+        assertNotNull(newRooms.find { it.id == newRoom.id })
 
         apiOwnerMeet.rooms.deleteRoom(newRoom.id)
     }
@@ -143,7 +148,7 @@ class ApiRoomsTests {
         assertTrue(waiting1.participants.isNotEmpty())
         assertEquals("myself", waiting1.participants[0].username)
 
-        apiOwnerMeet.rooms.enter(newRoom.id, requestEntry.id, true)
+        apiOwnerMeet.rooms.validateParticipantEntry(newRoom.id, requestEntry.id, true)
 
         val requestEntryAfter = apiOwnerKleperf.rooms.requestEntry(newRoom.id, requestEntry)
         val waiting = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)
@@ -172,7 +177,7 @@ class ApiRoomsTests {
         assertTrue(waiting1.participants.isNotEmpty())
         assertEquals("myself", waiting1.participants[0].username)
 
-        apiOwnerMeet.rooms.enter(newRoom.id, requestEntry.id, false)
+        apiOwnerMeet.rooms.validateParticipantEntry(newRoom.id, requestEntry.id, false)
 
         apiOwnerKleperf.rooms.rooms()
 

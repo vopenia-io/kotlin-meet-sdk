@@ -1,19 +1,22 @@
 package io.vopenia.api.users
 
-import io.vopenia.api.utils.log.LogSession
+import io.vopenia.api.utils.GetTokens
 import io.vopenia.client.Api
+import io.vopenia.client.AuthenticationInformation
+import io.vopenia.konfig.Konfig
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
 class ApiUserTests {
+    var ownerToken: AuthenticationInformation? = null
     val api = Api(
-        "http://localhost:8071/api/v1.0",
+        "${Konfig.tunnelApiForwarder}/api/v1.0",
+        // "http://localhost:8071/api/v1.0",
         enableHttpLogs = true
     ) {
-        LogSession().getAuthenticateAnswer(
-            "meet",
-            "meet"
-        )
+        ownerToken ?: GetTokens("meet", "meet").also {
+            ownerToken = it
+        }
     }
 
     @Test

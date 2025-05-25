@@ -50,6 +50,34 @@ To run the application locally:
 ./gradlew publishToMavenLocal
 ```
 
+## Tests on mobile devices
+
+In order to test on mobile devices :
+
+- create a tunnel to the ::3071 endpoint
+- configure a tunnel to the 8181 port -> which will be used to give you the credentials
+- configure your ~/.gradle/gradle.properties
+
+```
+VOPENIA_MEET_TESTS_TUNNEL_ENDPOINT=https://ngrok.endpoint.for.8181
+VOPENIA_MEET_TESTS_TUNNEL_API=https://ngrok.endpoint.for.3071
+```
+
+### Testing on iOS
+
+Edit the gradle.properties file, put at the end:
+```
+iOSSimulatorUuid=4BB42133-F542...
+```
+
+You can get the list of devices via `xcrun xctrace list devices`.
+
+Running the iosSimulatorArm64Test will now open the simulator and run the tests
+
+```bash
+./gradlew :kotlin-meet-sdk-api:iosSimulatorArm64Test
+```
+
 ## 📄 Licence
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.

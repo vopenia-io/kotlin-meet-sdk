@@ -4,6 +4,7 @@ plugins {
     alias(additionals.plugins.kotlin.multiplatform)
     alias(additionals.plugins.android.library)
     alias(additionals.plugins.multiplatform.buildkonfig)
+    alias(additionals.plugins.kotlin.serialization)
     id("jvmCompat")
     id("iosSimulatorConfiguration")
 }
@@ -31,6 +32,15 @@ kotlin {
     linuxArm64()
     linuxX64()
 
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                api(additionals.multiplatform.http.client)
+                implementation(additionals.kotlinx.coroutines)
+            }
+        }
+    }
+
     targets.configureEach {
         compilations.configureEach {
             compileTaskProvider.get().compilerOptions {
@@ -49,7 +59,8 @@ buildkonfig {
 
     defaultConfigs {
         listOf(
-            "cookieToken" to "VOPENIA_MEET_TESTS_COOKIE_TOKEN_VALUE"
+            "tunnelEndpointTokenForwarder" to "VOPENIA_MEET_TESTS_TUNNEL_ENDPOINT",
+            "tunnelApiForwarder" to "VOPENIA_MEET_TESTS_TUNNEL_API",
         ).forEach {
             buildConfigField(
                 FieldSpec.Type.STRING,

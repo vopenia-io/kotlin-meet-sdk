@@ -4,6 +4,7 @@ plugins {
     alias(additionals.plugins.kotlin.serialization)
     id("publication")
     id("jvmCompat")
+    id("iosSimulatorConfiguration")
 }
 
 kotlin {
@@ -42,6 +43,7 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation(additionals.multiplatform.file.access)
                 implementation(additionals.kotlinx.coroutines.test)
+                implementation(projects.konfig)
             }
         }
     }

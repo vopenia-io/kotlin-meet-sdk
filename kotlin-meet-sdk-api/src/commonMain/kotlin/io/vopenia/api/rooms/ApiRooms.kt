@@ -47,6 +47,11 @@ class ApiRooms(
     suspend fun rooms(): Page<Room> = wrapper.get("rooms/")
 
     /**
+     * Limit listed rooms to the ones related to the authenticated user.
+     */
+    suspend fun rooms(page: Int): Page<Room> = wrapper.get("rooms/?page=$page")
+
+    /**
      * Invite specific participants given their email
      */
     suspend fun invite(

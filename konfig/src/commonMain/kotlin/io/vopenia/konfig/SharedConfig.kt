@@ -1,5 +1,6 @@
 package io.vopenia.konfig
 
 object Konfig {
-    val cookieToken = BuildKonfig.cookieToken
+    val tunnelEndpointTokenForwarder = BuildKonfig.tunnelEndpointTokenForwarder
+    val tunnelApiForwarder = BuildKonfig.tunnelApiForwarder
 }
