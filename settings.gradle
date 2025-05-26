@@ -32,4 +32,5 @@ rootProject.name = "sdk"
 include("konfig")
 include("tunnel-http")
 include("kotlin-meet-sdk-api")
+include("kotlin-meet-sdk-compose")
 include("kotlin-meet-sdk")

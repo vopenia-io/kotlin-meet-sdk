@@ -4,7 +4,10 @@ ktor = "3.0.1"
 vopenia = "0.0.9"
 
 [libraries]
+vopenia-participants = { module = "io.vopenia:vopenia-participants", version.ref = "vopenia" }
 vopenia = { module = "io.vopenia:vopenia", version.ref = "vopenia" }
+vopenia-compose = { module = "io.vopenia:vopenia-compose", version.ref = "vopenia" }
+vopenia-utils = { module = "io.vopenia:vopenia-utils", version.ref = "vopenia" }
 
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }

@@ -1,11 +1,11 @@
 package io.vopenia.sdk
 
 import io.vopenia.api.Api
-import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.NewRoomParam
-import io.vopenia.api.rooms.models.RoomAccessLevel
 import io.vopenia.sdk.room.Room
+import io.vopenia.sdk.room.RoomAccessLevel
+import io.vopenia.sdk.utils.AuthenticationInformation
 import io.vopenia.sdk.utils.getAllRooms
 
 class Session(
@@ -13,7 +13,14 @@ class Session(
     enableHttpLog: Boolean = false,
     refreshAuthenticationInformation: suspend () -> AuthenticationInformation
 ) {
-    internal val api = Api(prefixApi, enableHttpLog, refreshAuthenticationInformation)
+    internal val api = Api(prefixApi, enableHttpLog) {
+        refreshAuthenticationInformation().let {
+            io.vopenia.api.AuthenticationInformation(
+                csrftoken = it.csrftoken,
+                meetSessionId = it.meetSessionId
+            )
+        }
+    }
     private var rooms = mutableListOf<Room>()
 
     suspend fun createRoom(
@@ -24,7 +31,7 @@ class Session(
             NewRoomParam(
                 name,
                 configuration = "",
-                accessLevel = accessLevel
+                accessLevel = accessLevel.toApi()
             )
         )
 

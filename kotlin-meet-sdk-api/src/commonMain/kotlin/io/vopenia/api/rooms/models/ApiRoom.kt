@@ -11,9 +11,9 @@ data class ApiRoom(
     val slug: String,
     val configuration: JsonElement? = null,
     @SerialName("access_level")
-    val accessLevel: RoomAccessLevel,
+    val accessLevel: ApiRoomAccessLevel,
     // val language: String,
-    val accesses: List<Access> = emptyList(),
+    val accesses: List<ApiAccess> = emptyList(),
     val livekit: Livekit? = null,
     @SerialName("is_administrable")
     val isAadministrable: Boolean

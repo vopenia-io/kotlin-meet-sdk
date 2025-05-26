@@ -5,7 +5,7 @@ import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.InviteEmails
 import io.vopenia.api.rooms.models.NewRoomParam
-import io.vopenia.api.rooms.models.RequestEntryAnswer
+import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.RequestEntryParameter
 import io.vopenia.api.rooms.models.RoomEnterParameter
 import io.vopenia.api.rooms.models.WaitingParticipants
@@ -101,8 +101,8 @@ class ApiRooms(
      */
     suspend fun requestEntry(
         id: String,
-        previousRequest: RequestEntryAnswer
-    ): RequestEntryAnswer = wrapper.post(
+        previousRequest: ApiRequestEntryAnswer
+    ): ApiRequestEntryAnswer = wrapper.post(
         "rooms/$id/request-entry/",
         RequestEntryParameter(previousRequest.username),
         listOf("lobbyParticipantId" to previousRequest.id)
@@ -115,7 +115,7 @@ class ApiRooms(
     suspend fun requestEntry(
         id: String,
         userName: String
-    ): RequestEntryAnswer = wrapper.post(
+    ): ApiRequestEntryAnswer = wrapper.post(
         "rooms/$id/request-entry/",
         RequestEntryParameter(userName)
     )

@@ -8,5 +8,5 @@ data class NewRoomParam(
     val name: String,
     val configuration: String,
     @SerialName("access_level")
-    val accessLevel: RoomAccessLevel,
+    val accessLevel: ApiRoomAccessLevel,
 )

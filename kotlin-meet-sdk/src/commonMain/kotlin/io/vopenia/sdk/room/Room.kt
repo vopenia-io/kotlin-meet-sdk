@@ -1,21 +1,23 @@
 package io.vopenia.sdk.room
 
-import io.vopenia.api.rooms.models.Access
+import com.vopenia.sdk.utils.Dispatchers
+import com.vopenia.sdk.utils.map
+import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.Livekit
-import io.vopenia.api.rooms.models.RequestEntryAnswer
-import io.vopenia.api.rooms.models.RoomAccessLevel
 import io.vopenia.sdk.Session
+import kotlinx.coroutines.CoroutineScope
 
 data class Room(
     private val session: Session,
     val originalRoom: ApiRoom,
     val id: String
 ) {
-    private val liveKitRoom = com.vopenia.sdk.Room()
+    private val scope = CoroutineScope(Dispatchers.IO)
+    internal val liveKitRoom = com.vopenia.livekit.Room()
     private var currentRequestEntryManager: RequestEntryManagement? = null
 
-    val connectionState = liveKitRoom.connectionState
+    val connectionState = liveKitRoom.connectionState.map(scope) { it.to() }
     val localParticipant = liveKitRoom.localParticipant
     val remoteParticipant = liveKitRoom.remoteParticipants
 
@@ -38,16 +40,16 @@ data class Room(
     //    get() = internalRoom.configuration
 
     val accessLevel: RoomAccessLevel
-        get() = internalRoom.accessLevel
+        get() = internalRoom.accessLevel.to()
 
     // val language: String
     // get() = internalRoom.id
 
     val accesses: List<Access>
-        get() = internalRoom.accesses
+        get() = internalRoom.accesses.map { it.to() }
 
-    val livekit: Livekit?
-        get() = currentRequestEntryManager?.currentRequestEntryStatus?.livekit
+    private val livekit: Livekit?
+        get() = currentRequestEntryManager?.currentApiRequestEntryStatus?.livekit
             ?: internalRoom.livekit
 
     val isAadministrable: Boolean
@@ -75,7 +77,7 @@ data class Room(
         session.api.rooms.requestEntry(id, userName)
     )
 
-    private suspend fun requestEntry(previousRequest: RequestEntryAnswer) =
+    private suspend fun requestEntry(previousRequest: ApiRequestEntryAnswer) =
         session.api.rooms.requestEntry(id, previousRequest)
 
     suspend fun acceptWaitingParticipant(participantId: String, accept: Boolean) {
@@ -83,25 +85,30 @@ data class Room(
     }
 
     suspend fun waitingParticipants(): List<RequestEntryAnswer> {
-        try {
-            return session.api.rooms.waitingParticipants(id).participants
+        return try {
+            session.api.rooms.waitingParticipants(id).participants.map { it.to() }
         } catch (err: Throwable) {
             // nothing
-            return emptyList()
+            emptyList()
         }
     }
 
     class RequestEntryManagement(
         private val room: Room,
         private val session: Session,
-        originalRequestEntry: RequestEntryAnswer
+        originalRequestEntry: ApiRequestEntryAnswer
     ) {
-        var currentRequestEntryStatus: RequestEntryAnswer = originalRequestEntry
+        internal var currentApiRequestEntryStatus: ApiRequestEntryAnswer = originalRequestEntry
+            private set
+
+        var currentRequestEntryStatus: RequestEntryAnswer = originalRequestEntry.to()
             private set
 
         suspend fun checkEntry(): RequestEntryAnswer {
-            return session.api.rooms.requestEntry(room.id, currentRequestEntryStatus).also {
-                currentRequestEntryStatus = it
+            return session.api.rooms.requestEntry(room.id, currentApiRequestEntryStatus).let {
+                currentApiRequestEntryStatus = it
+                currentRequestEntryStatus = it.to()
+                it.to()
             }
         }
     }

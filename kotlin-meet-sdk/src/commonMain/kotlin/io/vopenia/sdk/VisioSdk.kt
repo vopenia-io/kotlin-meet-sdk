@@ -1,6 +1,6 @@
 package io.vopenia.sdk
 
-import io.vopenia.api.AuthenticationInformation
+import io.vopenia.sdk.utils.AuthenticationInformation
 
 object VisioSdk {
     fun openSession(

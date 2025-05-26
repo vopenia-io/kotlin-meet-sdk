@@ -1,7 +1,6 @@
 plugins {
     alias(additionals.plugins.kotlin.multiplatform)
     alias(additionals.plugins.android.library)
-    alias(additionals.plugins.kotlin.serialization)
     id("publication")
     id("jvmCompat")
     id("iosSimulatorConfiguration")
@@ -21,8 +20,10 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(projects.kotlinMeetSdkApi)
-                api(libs.vopenia)
+                implementation(projects.kotlinMeetSdkApi)
+                implementation(libs.vopenia)
+                implementation(libs.vopenia.utils)
+                api(libs.vopenia.participants)
             }
         }
         val commonTest by getting {

@@ -4,7 +4,7 @@ import io.vopenia.api.users.models.ApiUser
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Access(
+data class ApiAccess(
     val id: String,
     val user: ApiUser,
     val resource: String,

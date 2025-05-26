@@ -3,8 +3,8 @@ package io.vopenia.api.users
 import io.vopenia.api.Api
 import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.NewRoomParam
-import io.vopenia.api.rooms.models.RequestEntryStatus
-import io.vopenia.api.rooms.models.RoomAccessLevel
+import io.vopenia.api.rooms.models.ApiRequestEntryStatus
+import io.vopenia.api.rooms.models.ApiRoomAccessLevel
 import io.vopenia.api.utils.GetTokens
 import io.vopenia.api.utils.getAllRooms
 import io.vopenia.konfig.Konfig
@@ -53,7 +53,7 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Public
+                accessLevel = ApiRoomAccessLevel.Public
             )
         )
         println(newRoom)
@@ -66,7 +66,7 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${newRoom.name}_updated",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Public
+                accessLevel = ApiRoomAccessLevel.Public
             )
         )
 
@@ -81,14 +81,14 @@ class ApiRoomsTests {
     fun requestEntry() = runTest {
         listOf(
             Triple(
-                RoomAccessLevel.Public,
-                RequestEntryStatus.Accepted,
-                RequestEntryStatus.Accepted
+                ApiRoomAccessLevel.Public,
+                ApiRequestEntryStatus.Accepted,
+                ApiRequestEntryStatus.Accepted
             ),
             Triple(
-                RoomAccessLevel.Restricted,
-                RequestEntryStatus.Waiting,
-                RequestEntryStatus.Waiting
+                ApiRoomAccessLevel.Restricted,
+                ApiRequestEntryStatus.Waiting,
+                ApiRequestEntryStatus.Waiting
             ),
         ).forEach { (roomVisibility, ownerStatus, outsiderStatus) ->
             val newRoom = apiOwnerMeet.rooms.createRoom(
@@ -115,7 +115,7 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Public
+                accessLevel = ApiRoomAccessLevel.Public
             )
         )
 
@@ -143,7 +143,7 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Restricted
+                accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
 
@@ -152,7 +152,7 @@ class ApiRoomsTests {
         )
 
         val requestEntry = apiOwnerKleperf.rooms.requestEntry(newlyCreatedRoom.id, "myself")
-        assertEquals(RequestEntryStatus.Waiting, requestEntry.status)
+        assertEquals(ApiRequestEntryStatus.Waiting, requestEntry.status)
 
         val waiting1 = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)
         assertTrue(waiting1.participants.isNotEmpty())
@@ -162,7 +162,7 @@ class ApiRoomsTests {
 
         val requestEntryAfter = apiOwnerKleperf.rooms.requestEntry(newRoom.id, requestEntry)
         val waiting = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)
-        assertEquals(RequestEntryStatus.Accepted, requestEntryAfter.status)
+        assertEquals(ApiRequestEntryStatus.Accepted, requestEntryAfter.status)
         assertNotNull(requestEntryAfter.livekit)
 
         assertTrue(waiting.participants.isEmpty())
@@ -176,12 +176,12 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Restricted
+                accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
 
         val requestEntry = apiOwnerKleperf.rooms.requestEntry(newRoom.id, "myself")
-        assertEquals(RequestEntryStatus.Waiting, requestEntry.status)
+        assertEquals(ApiRequestEntryStatus.Waiting, requestEntry.status)
 
         val waiting1 = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)
         assertTrue(waiting1.participants.isNotEmpty())
@@ -192,7 +192,7 @@ class ApiRoomsTests {
         apiOwnerKleperf.rooms.rooms()
 
         val requestEntryAfter = apiOwnerKleperf.rooms.requestEntry(newRoom.id, requestEntry)
-        assertEquals(RequestEntryStatus.Denied, requestEntryAfter.status)
+        assertEquals(ApiRequestEntryStatus.Denied, requestEntryAfter.status)
         assertNull(requestEntryAfter.livekit)
 
         val waiting2 = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)
@@ -207,7 +207,7 @@ class ApiRoomsTests {
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
                 configuration = "",
-                accessLevel = RoomAccessLevel.Public
+                accessLevel = ApiRoomAccessLevel.Public
             )
 
         val newRoomMeet = apiOwnerMeet.rooms.createRoom(common)
