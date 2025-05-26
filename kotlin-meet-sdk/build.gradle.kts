@@ -14,28 +14,15 @@ kotlin {
 
     jvm()
 
-    js(IR) {
-        browser()
-    }
-
     iosX64()
     iosArm64()
     iosSimulatorArm64()
 
-    macosArm64()
-    macosX64()
-
-    mingwX64()
-
-    linuxArm64()
-    linuxX64()
-
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(additionals.multiplatform.http.client)
-                implementation(additionals.kotlinx.coroutines)
-                implementation(additionals.kotlinx.serialization.json)
+                api(projects.kotlinMeetSdkApi)
+                api(libs.vopenia)
             }
         }
         val commonTest by getting {
@@ -50,5 +37,5 @@ kotlin {
 }
 
 android {
-    namespace = "${rootProject.getExtraString("group", "")}.api"
+    namespace = rootProject.getExtraString("group", "")
 }

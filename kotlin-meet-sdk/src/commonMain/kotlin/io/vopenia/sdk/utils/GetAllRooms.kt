@@ -1,7 +1,7 @@
-package io.vopenia.api.utils
+package io.vopenia.sdk.utils
 
-import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.Api
+import io.vopenia.api.rooms.models.ApiRoom
 
 suspend fun getAllRooms(apiCall: Api): List<ApiRoom> {
     val rooms = mutableListOf<ApiRoom>()
@@ -10,19 +10,12 @@ suspend fun getAllRooms(apiCall: Api): List<ApiRoom> {
     println(result.results)
     rooms += result.results
 
-    println("rooms -> ${result.results.size} -> ${rooms.size}")
-
     while (null != result.next) {
         val next = result.next!!.split("?page=")[1].split("\"")[0].toInt()
-        println("next is not null -> $next")
         result = apiCall.rooms.rooms(next)
         println(result.results)
         rooms += result.results
-
-        println("check next -> ${result.results.size} -> ${rooms.size}")
     }
-
-    println("rooms size ${rooms.size}")
 
     return rooms
 }

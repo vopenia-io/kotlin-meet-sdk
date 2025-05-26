@@ -1,4 +1,4 @@
-package io.vopenia.api.utils
+package io.vopenia.sdk
 
 import eu.codlab.http.createClient
 import io.ktor.client.call.body

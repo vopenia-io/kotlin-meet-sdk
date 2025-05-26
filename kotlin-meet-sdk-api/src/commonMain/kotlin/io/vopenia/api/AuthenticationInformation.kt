@@ -1,4 +1,4 @@
-package io.vopenia.client
+package io.vopenia.api
 
 import kotlinx.serialization.Serializable
 

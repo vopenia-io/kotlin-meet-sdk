@@ -11,21 +11,3 @@ data class RequestEntryAnswer(
     val color: String,
     val livekit: Livekit? = null
 )
-
-@Serializable
-enum class RequestEntryStatus {
-    @SerialName("waiting")
-    Waiting,
-
-    @SerialName("accepted")
-    Accepted,
-
-    @SerialName("idle")
-    Idle,
-
-    @SerialName("denied")
-    Denied,
-
-    @SerialName("timeout")
-    Timeout,
-}

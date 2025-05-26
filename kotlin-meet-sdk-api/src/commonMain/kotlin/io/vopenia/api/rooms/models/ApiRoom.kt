@@ -5,27 +5,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 @Serializable
-data class Room(
+data class ApiRoom(
     val id: String,
     val name: String,
     val slug: String,
-    val configuration: JsonElement,
+    val configuration: JsonElement? = null,
     @SerialName("access_level")
     val accessLevel: RoomAccessLevel,
     // val language: String,
-    val accesses: List<Access>,
-    val livekit: Livekit,
+    val accesses: List<Access> = emptyList(),
+    val livekit: Livekit? = null,
     @SerialName("is_administrable")
     val isAadministrable: Boolean
 )
-
-enum class RoomAccessLevel {
-    @SerialName("public")
-    Public,
-
-    @SerialName("trusted")
-    Trusted,
-
-    @SerialName("restricted")
-    Restricted
-}

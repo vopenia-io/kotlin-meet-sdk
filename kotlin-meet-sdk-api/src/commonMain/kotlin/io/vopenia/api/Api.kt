@@ -1,4 +1,4 @@
-package io.vopenia.client
+package io.vopenia.api
 
 import eu.codlab.http.Configuration
 import eu.codlab.http.createClient

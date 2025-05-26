@@ -1,16 +1,16 @@
 package io.vopenia.api.rooms
 
 import io.ktor.client.HttpClient
+import io.vopenia.api.AuthenticationInformation
+import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.InviteEmails
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.api.rooms.models.RequestEntryAnswer
 import io.vopenia.api.rooms.models.RequestEntryParameter
-import io.vopenia.api.rooms.models.Room
 import io.vopenia.api.rooms.models.RoomEnterParameter
 import io.vopenia.api.rooms.models.WaitingParticipants
 import io.vopenia.api.utils.AbstractApi
 import io.vopenia.api.utils.Page
-import io.vopenia.client.AuthenticationInformation
 
 class ApiRooms(
     client: HttpClient,
@@ -22,18 +22,27 @@ class ApiRooms(
     /**
      * API endpoints to access and perform actions on rooms. Create a new room
      */
-    suspend fun createRoom(param: NewRoomParam): Room = wrapper.post("rooms/", param)
+    suspend fun createRoom(param: NewRoomParam): ApiRoom = wrapper.post("rooms/", param)
+
+    /**
+     * API endpoints to access and perform actions on rooms. Create a new room
+     */
+    suspend fun room(slug: String): ApiRoom? = try {
+        wrapper.get("rooms/${slug}")
+    } catch (err: Throwable) {
+        null
+    }
 
     /**
      * API endpoints to access and perform actions on rooms. Create a new room with a specific id
      */
-    suspend fun createRoom(id: String, param: NewRoomParam): Room =
+    suspend fun createRoom(id: String, param: NewRoomParam): ApiRoom =
         wrapper.put("rooms/$id", param)
 
     /**
      * API endpoints to access and perform actions on rooms. Update an existing room
      */
-    suspend fun updateRoom(id: String, param: NewRoomParam): Room =
+    suspend fun updateRoom(id: String, param: NewRoomParam): ApiRoom =
         wrapper.patch("rooms/$id/", param)
 
     /**
@@ -44,12 +53,12 @@ class ApiRooms(
     /**
      * Limit listed rooms to the ones related to the authenticated user.
      */
-    suspend fun rooms(): Page<Room> = wrapper.get("rooms/")
+    suspend fun rooms(): Page<ApiRoom> = wrapper.get("rooms/")
 
     /**
      * Limit listed rooms to the ones related to the authenticated user.
      */
-    suspend fun rooms(page: Int): Page<Room> = wrapper.get("rooms/?page=$page")
+    suspend fun rooms(page: Int): Page<ApiRoom> = wrapper.get("rooms/?page=$page")
 
     /**
      * Invite specific participants given their email

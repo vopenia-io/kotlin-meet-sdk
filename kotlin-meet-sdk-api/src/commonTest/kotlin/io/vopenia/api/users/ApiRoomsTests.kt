@@ -1,12 +1,12 @@
 package io.vopenia.api.users
 
+import io.vopenia.api.Api
+import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.api.rooms.models.RequestEntryStatus
 import io.vopenia.api.rooms.models.RoomAccessLevel
 import io.vopenia.api.utils.GetTokens
 import io.vopenia.api.utils.getAllRooms
-import io.vopenia.client.Api
-import io.vopenia.client.AuthenticationInformation
 import io.vopenia.konfig.Konfig
 import korlibs.time.DateTime
 import kotlinx.coroutines.test.runTest
@@ -132,6 +132,12 @@ class ApiRoomsTests {
     }
 
     @Test
+    fun gettingNonExistingRoom() = runTest {
+        val room = apiOwnerMeet.rooms.room("doesntexist_${DateTime.nowUnixMillisLong()}")
+        assertNull(room)
+    }
+
+    @Test
     fun testEnterAccepted() = runTest {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
@@ -141,7 +147,11 @@ class ApiRoomsTests {
             )
         )
 
-        val requestEntry = apiOwnerKleperf.rooms.requestEntry(newRoom.id, "myself")
+        val newlyCreatedRoom = apiOwnerMeet.rooms.room(newRoom.name) ?: throw IllegalStateException(
+            "test failed -> conference not found"
+        )
+
+        val requestEntry = apiOwnerKleperf.rooms.requestEntry(newlyCreatedRoom.id, "myself")
         assertEquals(RequestEntryStatus.Waiting, requestEntry.status)
 
         val waiting1 = apiOwnerMeet.rooms.waitingParticipants(newRoom.id)

@@ -1,7 +1,11 @@
 [versions]
 ktor = "3.0.1"
 
+vopenia = "0.0.9"
+
 [libraries]
+vopenia = { module = "io.vopenia:vopenia", version.ref = "vopenia" }
+
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-server-contentnegociation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }

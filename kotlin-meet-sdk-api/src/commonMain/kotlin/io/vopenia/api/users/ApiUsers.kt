@@ -1,10 +1,10 @@
 package io.vopenia.api.users
 
 import io.ktor.client.HttpClient
-import io.vopenia.api.users.models.User
+import io.vopenia.api.users.models.ApiUser
 import io.vopenia.api.utils.AbstractApi
 import io.vopenia.api.utils.Page
-import io.vopenia.client.AuthenticationInformation
+import io.vopenia.api.AuthenticationInformation
 
 class ApiUsers(
     client: HttpClient,
@@ -16,10 +16,10 @@ class ApiUsers(
     /**
      * Return information on currently logged user
      */
-    suspend fun users() = wrapper.get<Page<User>>("users")
+    suspend fun users() = wrapper.get<Page<ApiUser>>("users")
 
     /**
      * Return information on currently logged user
      */
-    suspend fun me() = wrapper.get<User>("users/me")
+    suspend fun me() = wrapper.get<ApiUser>("users/me")
 }

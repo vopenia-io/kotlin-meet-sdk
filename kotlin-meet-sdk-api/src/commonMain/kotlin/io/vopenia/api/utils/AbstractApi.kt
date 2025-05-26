@@ -13,7 +13,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.vopenia.client.AuthenticationInformation
+import io.vopenia.api.AuthenticationInformation
 
 class AbstractApi(
     val client: HttpClient,
