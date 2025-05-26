@@ -34,3 +34,6 @@ include("tunnel-http")
 include("kotlin-meet-sdk-api")
 include("kotlin-meet-sdk-compose")
 include("kotlin-meet-sdk")
+include("shared")
+include("sampleAndroid")
+

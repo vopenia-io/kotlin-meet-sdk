@@ -22,3 +22,7 @@ gradle/extended
 **/assets/*.csv
 !**/androidTest/assets/**
 **/assets/*.json
+
+*.keystore
+google-services.json
+*-credentials.json

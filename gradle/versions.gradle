@@ -41,4 +41,11 @@ ext {
 
     projectVersionCode = 1
     publishWithSources = true
+
+    // sample app specifics
+    storeFile = prop("VOPENIA_STORE_FILE", "")
+    storePassword = prop("VOPENIA_STORE_PASSWORD", "")
+    keyAlias = prop("VOPENIA_KEY_ALIAS", "")
+    keyPassword = prop("VOPENIA_KEY_PASSWORD", "")
+    appDistributionId = prop("VOPENIA_APP_DISTRIBUTION_APP_ID", "")
 }
