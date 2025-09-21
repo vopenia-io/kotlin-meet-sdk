@@ -1,7 +1,7 @@
 [versions]
 ktor = "3.0.1"
 
-vopenia = "0.0.9-alpha2"
+vopenia = "0.0.9-alpha4"
 
 google-services = "4.4.2"
 app-distribution = "5.1.1"

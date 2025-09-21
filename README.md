@@ -29,7 +29,7 @@ To enable the tests, you will need to do the following steps
 
 1. Log in to the platform's web interface.
 2. Open developer tools (F12) > "Storage" tab > "Cookies".
-3. Copy the value of the `meet_sessionid` cookie.
+3. Copy the value of the `sessionid` cookie.
 4. Add this value to your `~/.gradle/gradle.properties` file under the following key:
 
 ```properties

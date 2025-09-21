@@ -11,6 +11,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.vopenia.api.AuthenticationInformation
@@ -20,14 +21,21 @@ class AbstractApi(
     val prefix: String,
     val getAuthent: suspend () -> AuthenticationInformation
 ) {
+    private val host = Url(prefix).let {
+        "${it.protocol.name}://${it.host}"
+    }
+
     fun HttpRequestBuilder.buildCookie(
         bearer: AuthenticationInformation,
         optional: List<Pair<String, String>> = emptyList()
     ) {
-        val reserved = listOf("csrftoken", "meet_sessionid")
+        val reserved = listOf("csrftoken", "sessionid")
         val validCookies = optional.filter { !reserved.contains(it.first) }
 
-        var cookies = "csrftoken=${bearer.csrftoken};meet_sessionid=${bearer.meetSessionId}"
+        var cookies = listOf(
+            "csrftoken" to bearer.csrftoken,
+            "sessionid" to bearer.meetSessionId
+        ).filter { it.second != null }.joinToString(";") { "${it.first}=${it.second}" }
 
         if (validCookies.isNotEmpty()) {
             cookies += ";" + validCookies.joinToString(";") { "${it.first}=${it.second}" }
@@ -35,6 +43,7 @@ class AbstractApi(
 
         header("Cookie", cookies)
         header("x-csrftoken", bearer.csrftoken)
+        header("Referer", host)
     }
 
     suspend inline fun <reified T> get(
