@@ -15,7 +15,7 @@ import io.vopenia.api.utils.Page
 class ApiRooms(
     client: HttpClient,
     prefix: String,
-    getAuthent: suspend () -> AuthenticationInformation
+    getAuthent: suspend () -> AuthenticationInformation?
 ) {
     private val wrapper = AbstractApi(client, prefix, getAuthent)
 

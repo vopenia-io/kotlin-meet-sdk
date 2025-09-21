@@ -8,7 +8,7 @@ import io.vopenia.api.users.ApiUsers
 class Api(
     prefix: String,
     enableHttpLogs: Boolean = false,
-    getAuthent: suspend () -> AuthenticationInformation,
+    getAuthent: suspend () -> AuthenticationInformation?,
 ) {
     private val client = createClient(
         Configuration(enableLogs = enableHttpLogs)

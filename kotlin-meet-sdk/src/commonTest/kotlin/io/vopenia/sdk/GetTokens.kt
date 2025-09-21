@@ -12,7 +12,7 @@ private val client = createClient {
     // nothing
 }
 
-suspend fun GetTokens(username: String, password: String): AuthenticationInformation {
+suspend fun GetTokens(username: String, password: String): AuthenticationInformation? {
     try {
         return client.get(
             "${Konfig.tunnelEndpointTokenForwarder}?username=$username&password=$password"

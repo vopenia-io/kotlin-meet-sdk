@@ -9,7 +9,7 @@ import io.vopenia.api.AuthenticationInformation
 class ApiUsers(
     client: HttpClient,
     prefix: String,
-    getAuthent: suspend () -> AuthenticationInformation
+    getAuthent: suspend () -> AuthenticationInformation?
 ) {
     private val wrapper = AbstractApi(client, prefix, getAuthent)
 

@@ -19,30 +19,34 @@ import io.vopenia.api.AuthenticationInformation
 class AbstractApi(
     val client: HttpClient,
     val prefix: String,
-    val getAuthent: suspend () -> AuthenticationInformation
+    val getAuthent: suspend () -> AuthenticationInformation?
 ) {
     private val host = Url(prefix).let {
         "${it.protocol.name}://${it.host}"
     }
 
     fun HttpRequestBuilder.buildCookie(
-        bearer: AuthenticationInformation,
+        bearer: AuthenticationInformation?,
         optional: List<Pair<String, String>> = emptyList()
     ) {
         val reserved = listOf("csrftoken", "sessionid")
         val validCookies = optional.filter { !reserved.contains(it.first) }
 
         var cookies = listOf(
-            "csrftoken" to bearer.csrftoken,
-            "sessionid" to bearer.meetSessionId
-        ).filter { it.second != null }.joinToString(";") { "${it.first}=${it.second}" }
+            "csrftoken" to bearer?.csrftoken,
+            "sessionid" to bearer?.meetSessionId
+        ).filter { it.second != null }
+            .joinToString(";") { "${it.first}=${it.second}" }
 
         if (validCookies.isNotEmpty()) {
             cookies += ";" + validCookies.joinToString(";") { "${it.first}=${it.second}" }
         }
 
         header("Cookie", cookies)
-        header("x-csrftoken", bearer.csrftoken)
+        if (null != bearer) {
+            header("x-csrftoken", bearer.csrftoken)
+        }
+
         header("Referer", host)
     }
 

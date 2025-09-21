@@ -6,7 +6,7 @@ object VisioSdk {
     fun openSession(
         prefixHttp: String,
         enableHttpLog: Boolean,
-        refreshAuthentication: suspend () -> AuthenticationInformation
+        refreshAuthentication: suspend () -> AuthenticationInformation?
     ) = Session(
         prefixHttp,
         enableHttpLog,

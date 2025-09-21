@@ -11,10 +11,10 @@ import io.vopenia.sdk.utils.getAllRooms
 class Session(
     prefixApi: String,
     enableHttpLog: Boolean = false,
-    refreshAuthenticationInformation: suspend () -> AuthenticationInformation
+    refreshAuthenticationInformation: suspend () -> AuthenticationInformation?
 ) {
     internal val api = Api(prefixApi, enableHttpLog) {
-        refreshAuthenticationInformation().let {
+        refreshAuthenticationInformation()?.let {
             io.vopenia.api.AuthenticationInformation(
                 csrftoken = it.csrftoken,
                 meetSessionId = it.meetSessionId

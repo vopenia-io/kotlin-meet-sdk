@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AuthenticationInformation(
     val csrftoken: String,
-    val meetSessionId: String? = null
+    val meetSessionId: String
 )
