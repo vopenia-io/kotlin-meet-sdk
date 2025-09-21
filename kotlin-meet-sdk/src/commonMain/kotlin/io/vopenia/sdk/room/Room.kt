@@ -52,7 +52,7 @@ data class Room(
         get() = currentRequestEntryManager?.currentApiRequestEntryStatus?.livekit
             ?: internalRoom.livekit
 
-    val isAadministrable: Boolean
+    val isAdministrable: Boolean
         get() = internalRoom.isAadministrable
 
     suspend fun connect() {
