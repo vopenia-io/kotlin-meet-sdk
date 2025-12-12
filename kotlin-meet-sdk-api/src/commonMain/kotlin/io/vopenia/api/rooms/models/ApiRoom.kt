@@ -16,5 +16,5 @@ data class ApiRoom(
     val accesses: List<ApiAccess> = emptyList(),
     val livekit: Livekit? = null,
     @SerialName("is_administrable")
-    val isAadministrable: Boolean
+    val isAdministrable: Boolean
 )

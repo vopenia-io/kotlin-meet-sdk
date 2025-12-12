@@ -44,7 +44,6 @@ kotlin {
 
             api(additionals.kotlinx.serialization.json)
 
-            api(additionals.multiplatform.precompose)
             api(additionals.multiplatform.safearea)
             api(additionals.multiplatform.widgets.compose)
             api(additionals.multiplatform.permissions)

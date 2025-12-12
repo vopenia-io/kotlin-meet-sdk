@@ -1,6 +1,7 @@
 package io.vopenia.sdk
 
 import io.vopenia.api.Api
+import io.vopenia.api.rooms.models.ApiAccess
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.sdk.room.Room
@@ -67,6 +68,24 @@ class Session(
 
         return checkAppendRoom(apiRoom)
     }
+
+    fun roomFromPushedValues(
+        id: String,
+        name: String,
+        slug: String,
+        accessLevel: RoomAccessLevel,
+        accesses: List<ApiAccess>,
+        isAdministrable: Boolean
+    ) = checkAppendRoom(
+        ApiRoom(
+            id = id,
+            name = name,
+            slug = slug,
+            accessLevel = accessLevel.toApi(),
+            accesses = accesses,
+            isAdministrable = isAdministrable,
+        )
+    )
 
     private fun checkAppendRoom(apiRoom: ApiRoom): Room {
         val existing = rooms.find { it.id == apiRoom.id }

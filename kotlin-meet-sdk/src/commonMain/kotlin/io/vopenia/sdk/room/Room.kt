@@ -53,7 +53,7 @@ data class Room(
             ?: internalRoom.livekit
 
     val isAdministrable: Boolean
-        get() = internalRoom.isAadministrable
+        get() = internalRoom.isAdministrable
 
     suspend fun connect() {
         if (null == livekit) throw IllegalStateException("Can't connect without livekit credentials")
