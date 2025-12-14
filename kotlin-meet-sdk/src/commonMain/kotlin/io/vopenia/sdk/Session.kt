@@ -1,8 +1,8 @@
 package io.vopenia.sdk
 
 import io.vopenia.api.Api
-import io.vopenia.api.rooms.models.ApiAccess
 import io.vopenia.api.rooms.models.ApiRoom
+import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.sdk.room.Room
 import io.vopenia.sdk.room.RoomAccessLevel
@@ -74,16 +74,24 @@ class Session(
         name: String,
         slug: String,
         accessLevel: RoomAccessLevel,
-        accesses: List<ApiAccess>,
-        isAdministrable: Boolean
+        // accesses: List<ApiAccess>,
+        isAdministrable: Boolean,
+        livekitUrl: String? = null,
+        livekitRoom: String? = null,
+        livekitToken: String? = null
     ) = checkAppendRoom(
         ApiRoom(
             id = id,
             name = name,
             slug = slug,
             accessLevel = accessLevel.toApi(),
-            accesses = accesses,
+            // accesses = accesses,
             isAdministrable = isAdministrable,
+            livekit = Livekit.from(
+                url = livekitUrl,
+                room = livekitRoom,
+                token = livekitToken
+            )
         )
     )
 
@@ -100,4 +108,16 @@ class Session(
             return wrapper
         }
     }
+}
+
+fun Livekit.Companion.from(
+    url: String?,
+    room: String?,
+    token: String?
+): Livekit? {
+    if (null == url) return null
+    if (null == room) return null
+    if (null == token) return null
+
+    return Livekit(url = url, room = room, token = token)
 }

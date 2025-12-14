@@ -55,12 +55,13 @@ data class Room(
     val isAdministrable: Boolean
         get() = internalRoom.isAdministrable
 
-    suspend fun connect() {
+    suspend fun connect(enableMicrophone: Boolean = true) {
         if (null == livekit) throw IllegalStateException("Can't connect without livekit credentials")
         livekit?.let {
             liveKitRoom.connect(
-                it.url,
-                it.token
+                url = it.url,
+                token = it.token,
+                enableMicrophone = enableMicrophone
             )
         }
     }
