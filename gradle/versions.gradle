@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * *
  * Default project info
  * * * * * * * * * * * * * * * * */
-def defaultVersion = "0.0.1-alpha5"
+def defaultVersion = "0.0.1-alpha6"
 def defaultGroup = "eu.codlab"
 
 def propSuffix = { prefix, suffixKeyName ->
