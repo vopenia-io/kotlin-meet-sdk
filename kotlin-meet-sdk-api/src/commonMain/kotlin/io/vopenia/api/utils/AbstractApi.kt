@@ -34,7 +34,8 @@ class AbstractApi(
 
         var cookies = listOf(
             "csrftoken" to bearer?.csrftoken,
-            "sessionid" to bearer?.meetSessionId
+            "sessionid" to bearer?.meetSessionId,
+            "meet_sessionid" to bearer?.meetSessionId
         ).filter { it.second != null }
             .joinToString(";") { "${it.first}=${it.second}" }
 
