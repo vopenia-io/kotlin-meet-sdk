@@ -4,6 +4,7 @@ import io.vopenia.api.Api
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
+import io.vopenia.sdk.devices.Devices
 import io.vopenia.sdk.room.Room
 import io.vopenia.sdk.room.RoomAccessLevel
 import io.vopenia.sdk.user.User
@@ -25,6 +26,8 @@ class Session(
         }
     }
     private var rooms = mutableListOf<Room>()
+
+    val devices = Devices(api)
 
     suspend fun me(): User = api.users.me().toUser()
 

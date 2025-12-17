@@ -2,6 +2,7 @@ package io.vopenia.api
 
 import eu.codlab.http.Configuration
 import eu.codlab.http.createClient
+import io.vopenia.api.devices.ApiDevices
 import io.vopenia.api.rooms.ApiRooms
 import io.vopenia.api.users.ApiUsers
 
@@ -25,4 +26,9 @@ class Api(
      * Access the users & user endpoints
      */
     val rooms = ApiRooms(client, prefix, getAuthent)
+
+    /**
+     * Access the devices endpoints
+     */
+    val devices = ApiDevices(client, prefix, getAuthent)
 }

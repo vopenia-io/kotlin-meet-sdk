@@ -12,7 +12,7 @@ def propSuffix = { prefix, suffixKeyName ->
 def repo = "vopenia/kotlin-meet-sdk"
 
 ext {
-    javaVersion = "17"
+    javaVersion = "21"
     prop = { name, defValue ->
         return rootProject.properties.containsKey(name)
                 ? rootProject.properties[name] : defValue
