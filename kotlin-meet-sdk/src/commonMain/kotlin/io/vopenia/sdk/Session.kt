@@ -7,6 +7,8 @@ import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.sdk.devices.Devices
 import io.vopenia.sdk.room.Room
 import io.vopenia.sdk.room.RoomAccessLevel
+import io.vopenia.sdk.user.User
+import io.vopenia.sdk.user.toUser
 import io.vopenia.sdk.utils.AuthenticationInformation
 import io.vopenia.sdk.utils.getAllRooms
 
@@ -27,15 +29,16 @@ class Session(
 
     val devices = Devices(api)
 
+    suspend fun me(): User = api.users.me().toUser()
+
     suspend fun createRoom(
         name: String,
-        accessLevel: RoomAccessLevel
+        accessLevel: RoomAccessLevel? = null
     ): Room {
         val apiRoom = api.rooms.createRoom(
             NewRoomParam(
                 name,
-                configuration = "",
-                accessLevel = accessLevel.toApi()
+                accessLevel = accessLevel?.toApi()
             )
         )
 

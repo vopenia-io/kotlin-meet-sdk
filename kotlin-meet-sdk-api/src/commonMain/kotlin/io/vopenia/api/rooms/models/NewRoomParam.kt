@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class NewRoomParam(
     val name: String,
-    val configuration: String,
+    // val configuration: String? = null,
     @SerialName("access_level")
-    val accessLevel: ApiRoomAccessLevel,
+    val accessLevel: ApiRoomAccessLevel? = null,
 )
