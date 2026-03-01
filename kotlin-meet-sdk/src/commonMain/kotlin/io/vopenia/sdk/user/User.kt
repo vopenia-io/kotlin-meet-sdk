@@ -14,7 +14,7 @@ data class User(
     val language: String
 )
 
-fun ApiUser.to() = User(
+internal fun ApiUser.toUser() = User(
     id = id,
     email = email,
     fullName = fullName,

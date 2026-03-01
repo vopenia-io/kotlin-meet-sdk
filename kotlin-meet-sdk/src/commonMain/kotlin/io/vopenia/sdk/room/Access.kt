@@ -2,7 +2,7 @@ package io.vopenia.sdk.room
 
 import io.vopenia.api.rooms.models.ApiAccess
 import io.vopenia.sdk.user.User
-import io.vopenia.sdk.user.to
+import io.vopenia.sdk.user.toUser
 
 data class Access(
     val id: String,
@@ -13,7 +13,7 @@ data class Access(
 
 fun ApiAccess.to() = Access(
     id,
-    user = user.to(),
+    user = user.toUser(),
     resource,
     role
 )
