@@ -1,7 +1,7 @@
 package io.vopenia.sdk.room
 
-import com.vopenia.sdk.utils.Dispatchers
-import com.vopenia.sdk.utils.map
+import io.vopenia.sdk.utils.Dispatchers
+import io.vopenia.sdk.utils.map
 import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.Livekit
@@ -14,7 +14,7 @@ data class Room(
     val id: String
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
-    internal val liveKitRoom = com.vopenia.livekit.Room()
+    internal val liveKitRoom = io.vopenia.livekit.Room()
     private var currentRequestEntryManager: RequestEntryManagement? = null
 
     val connectionState = liveKitRoom.connectionState.map(scope) { it.to() }

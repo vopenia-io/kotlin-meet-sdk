@@ -18,6 +18,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        mavenLocal()
     }
     versionCatalogs {
         additionals {
@@ -27,6 +28,15 @@ dependencyResolutionManagement {
 }
 
 includeBuild "gradle/extended/${ext.GRADLE_EXTENDED_VERSION_USED}/kt-plugins"
+
+includeBuild("../client-sdk-kotlin-multiplatform") {
+    dependencySubstitution {
+        substitute module("io.vopenia:vopenia") using project(":vopenia")
+        substitute module("io.vopenia:vopenia-compose") using project(":vopenia-compose")
+        substitute module("io.vopenia:vopenia-participants") using project(":vopenia-participants")
+        substitute module("io.vopenia:vopenia-utils") using project(":vopenia-utils")
+    }
+}
 
 rootProject.name = "sdk"
 include("konfig")

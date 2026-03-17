@@ -20,8 +20,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
-import com.vopenia.livekit.participant.Participant
-import com.vopenia.livekit.participant.track.IVideoTrack
+import io.vopenia.livekit.participant.Participant
+import io.vopenia.livekit.participant.track.IVideoTrack
 import de.drick.compose.hotpreview.HotPreview
 import eu.codlab.compose.theme.LocalDarkTheme
 import eu.codlab.compose.widgets.TextNormal

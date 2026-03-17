@@ -1,6 +1,6 @@
 package io.vopenia.sdk.utils
 
-import com.vopenia.sdk.utils.Dispatchers as DPC
+import io.vopenia.sdk.utils.Dispatchers as DPC
 
 object Dispatchers {
     val IO = DPC.IO

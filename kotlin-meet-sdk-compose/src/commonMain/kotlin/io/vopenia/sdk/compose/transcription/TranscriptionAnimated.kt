@@ -16,7 +16,7 @@ fun TranscriptionAnimated(
     typingDelayInMs: Long = 50L,
     content: @Composable (Modifier, String) -> Unit
 ) {
-    com.vopenia.livekit.compose.transcription.TranscriptionAnimated(
+    io.vopenia.livekit.compose.transcription.TranscriptionAnimated(
         modifier,
         text,
         typingDelayInMs,
