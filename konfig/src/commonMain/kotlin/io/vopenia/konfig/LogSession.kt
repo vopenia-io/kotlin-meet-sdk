@@ -82,8 +82,8 @@ class LogSession {
         val cookies = cookieStorage.get(Url("http://localhost"))
 
         return AuthenticationInformation(
-            meetSessionId = cookies.find { it.name == "sessionId" }!!.value,
-            csrftoken = cookies.find { it.name == "csrftoken" }!!.value,
+            meetSessionId = cookies.first { it.name in listOf("meet_sessionid", "sessionId") }.value,
+            csrftoken = cookies.first { it.name == "csrftoken" }.value,
         )
     }
 }
