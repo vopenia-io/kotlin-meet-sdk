@@ -20,6 +20,7 @@ data class Room(
     val connectionState = liveKitRoom.connectionState.map(scope) { it.to() }
     val localParticipant = liveKitRoom.localParticipant
     val remoteParticipant = liveKitRoom.remoteParticipants
+    val dataReceived = liveKitRoom.dataReceived
 
     val overriddenUsername: String?
         get() = currentRequestEntryManager?.currentRequestEntryStatus?.username
