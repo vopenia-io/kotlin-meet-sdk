@@ -51,7 +51,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(projects.kotlinMeetSdkApi)
+                api(projects.kotlinMeetSdkApi)
                 implementation(libs.vopenia)
                 implementation(libs.vopenia.utils)
                 api(libs.vopenia.participants)

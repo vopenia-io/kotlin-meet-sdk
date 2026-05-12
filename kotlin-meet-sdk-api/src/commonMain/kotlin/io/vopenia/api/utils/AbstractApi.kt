@@ -13,7 +13,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import io.vopenia.api.AuthenticationInformation
 
 class AbstractApi(
@@ -60,9 +59,7 @@ class AbstractApi(
             buildCookie(bearer)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -79,9 +76,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
     }
 
     suspend inline fun <reified R, reified T> post(
@@ -97,9 +92,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -116,9 +109,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -135,9 +126,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -152,9 +141,7 @@ class AbstractApi(
             contentType(ContentType.Application.Json)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
     }
 
     suspend inline fun <reified R, reified T> delete(
@@ -169,9 +156,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
