@@ -2,7 +2,13 @@ package io.vopenia.api.rooms
 
 import io.ktor.client.HttpClient
 import io.vopenia.api.AuthenticationInformation
+import io.vopenia.api.rooms.models.ApiMuteParticipantParam
+import io.vopenia.api.rooms.models.ApiOperationResponse
+import io.vopenia.api.rooms.models.ApiRecordingMode
+import io.vopenia.api.rooms.models.ApiRemoveParticipantParam
 import io.vopenia.api.rooms.models.ApiRoom
+import io.vopenia.api.rooms.models.ApiStartRecordingParam
+import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
 import io.vopenia.api.rooms.models.InviteEmails
 import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
@@ -11,6 +17,7 @@ import io.vopenia.api.rooms.models.RoomEnterParameter
 import io.vopenia.api.rooms.models.WaitingParticipants
 import io.vopenia.api.utils.AbstractApi
 import io.vopenia.api.utils.Page
+import kotlinx.serialization.Serializable
 
 class ApiRooms(
     client: HttpClient,
@@ -128,4 +135,82 @@ class ApiRooms(
     ): WaitingParticipants = wrapper.get(
         "rooms/$id/waiting-participants/"
     )
+
+    /**
+     * Start an Egress recording for the room.
+     *
+     * @param mode determines the produced artefact:
+     *   - [ApiRecordingMode.SCREEN_RECORDING] produces an MP4 of the composited video.
+     *   - [ApiRecordingMode.TRANSCRIPT] captures audio for offline ASR/transcript.
+     *
+     * Requires the caller to be an admin/owner of the room. The backend returns a
+     * status message; the resulting recording can later be retrieved via
+     * `ApiRecordings.recordings()` once the Egress reports completion.
+     */
+    suspend fun startRecording(id: String, mode: ApiRecordingMode): ApiOperationResponse =
+        wrapper.post(
+            "rooms/$id/start-recording/",
+            ApiStartRecordingParam(mode)
+        )
+
+    /**
+     * Stop the currently active recording on the room.
+     */
+    suspend fun stopRecording(id: String): ApiOperationResponse =
+        wrapper.post(
+            "rooms/$id/stop-recording/",
+            EmptyBody
+        )
+
+    /**
+     * Trigger live subtitle / transcription dispatching for the room. The backend
+     * dispatches a LiveKit ASR agent; segments arrive on each participant's
+     * LiveKit transcription channel and are exposed via `Room.transcription` flow.
+     *
+     * No explicit stop endpoint is provided — the agent terminates with the room.
+     */
+    suspend fun startSubtitle(id: String): ApiOperationResponse =
+        wrapper.post(
+            "rooms/$id/start-subtitle/",
+            EmptyBody
+        )
+
+    /**
+     * Server-side mute of a single track for a specific participant.
+     * Admin/owner only.
+     */
+    suspend fun muteParticipant(
+        id: String,
+        participantIdentity: String,
+        trackSid: String
+    ): ApiOperationResponse = wrapper.post(
+        "rooms/$id/mute-participant/",
+        ApiMuteParticipantParam(participantIdentity, trackSid)
+    )
+
+    /**
+     * Update server-side participant attributes / metadata / name.
+     * Admin/owner only. Only the provided keys are updated.
+     */
+    suspend fun updateParticipant(
+        id: String,
+        param: ApiUpdateParticipantParam
+    ): ApiOperationResponse = wrapper.post(
+        "rooms/$id/update-participant/",
+        param
+    )
+
+    /**
+     * Disconnect a participant from the LiveKit room. Admin/owner only.
+     */
+    suspend fun removeParticipant(
+        id: String,
+        participantIdentity: String
+    ): ApiOperationResponse = wrapper.post(
+        "rooms/$id/remove-participant/",
+        ApiRemoveParticipantParam(participantIdentity)
+    )
+
+    @Serializable
+    private object EmptyBody
 }

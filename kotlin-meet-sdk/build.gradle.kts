@@ -1,6 +1,7 @@
 plugins {
     alias(additionals.plugins.kotlin.multiplatform)
     alias(additionals.plugins.android.library)
+    alias(additionals.plugins.kotlin.serialization)
     id("org.jetbrains.kotlin.native.cocoapods")
     id("publication")
     id("jvmCompat")
@@ -55,6 +56,7 @@ kotlin {
                 implementation(libs.vopenia)
                 implementation(libs.vopenia.utils)
                 api(libs.vopenia.participants)
+                implementation(additionals.kotlinx.serialization.json)
             }
         }
         val commonTest by getting {

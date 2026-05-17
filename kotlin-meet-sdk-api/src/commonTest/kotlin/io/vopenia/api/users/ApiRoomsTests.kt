@@ -54,7 +54,6 @@ class ApiRoomsTests {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -67,7 +66,6 @@ class ApiRoomsTests {
             newRoom.id,
             NewRoomParam(
                 name = "${newRoom.name}_updated",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -97,7 +95,6 @@ class ApiRoomsTests {
             val newRoom = apiOwnerMeet.rooms.createRoom(
                 NewRoomParam(
                     name = "${DateTime.nowUnixMillisLong()}",
-                    configuration = "",
                     accessLevel = roomVisibility
                 )
             )
@@ -118,7 +115,6 @@ class ApiRoomsTests {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -148,7 +144,6 @@ class ApiRoomsTests {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
@@ -182,7 +177,6 @@ class ApiRoomsTests {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
@@ -214,7 +208,6 @@ class ApiRoomsTests {
         val common =
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
 
