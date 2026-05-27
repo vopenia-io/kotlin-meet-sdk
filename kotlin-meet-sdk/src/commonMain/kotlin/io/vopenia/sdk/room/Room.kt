@@ -317,7 +317,7 @@ data class Room(
         this,
         session,
         session.api.rooms.requestEntry(id, userName)
-    )
+    ).also { currentRequestEntryManager = it }
 
     private suspend fun requestEntry(previousRequest: ApiRequestEntryAnswer) =
         session.api.rooms.requestEntry(id, previousRequest)
