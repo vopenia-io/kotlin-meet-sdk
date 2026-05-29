@@ -4,6 +4,7 @@ import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
 import io.vopenia.api.rooms.models.Livekit
+import io.vopenia.api.rooms.models.NewRoomParam
 import io.vopenia.livekit.participant.transcription.TranscriptionSegment
 import io.vopenia.sdk.Session
 import io.vopenia.sdk.room.chat.ChatMessage
@@ -292,6 +293,23 @@ data class Room(
      */
     suspend fun removeParticipant(participantIdentity: String) {
         session.api.rooms.removeParticipant(id, participantIdentity)
+    }
+
+    /**
+     * Change the room access level (`public` / `trusted` / `restricted`).
+     * Admin/owner only. Persisted server-side via `PATCH rooms/{id}/` and applies
+     * to future occurrences of the meeting. Updates [accessLevel] on success.
+     *
+     * Reuses [io.vopenia.api.rooms.ApiRooms.updateRoom] (the proven PATCH path),
+     * re-posting the current [name] alongside the new level — `NewRoomParam`
+     * requires a name. A dedicated partial-patch param (also carrying
+     * `configuration.can_publish_sources`) is the documented next step.
+     */
+    suspend fun setAccessLevel(level: RoomAccessLevel) {
+        internalRoom = session.api.rooms.updateRoom(
+            id,
+            NewRoomParam(name = internalRoom.name, accessLevel = level.toApi())
+        )
     }
 
     // -- Connection lifecycle ------------------------------------------------
