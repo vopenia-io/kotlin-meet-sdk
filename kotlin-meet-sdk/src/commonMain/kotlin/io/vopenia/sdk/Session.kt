@@ -4,6 +4,8 @@ import io.vopenia.api.Api
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
+import io.vopenia.sdk.config.ServerCapabilities
+import io.vopenia.sdk.config.toServerCapabilities
 import io.vopenia.sdk.devices.Devices
 import io.vopenia.sdk.recording.Recording
 import io.vopenia.sdk.recording.toRecording
@@ -32,6 +34,17 @@ class Session(
     val devices = Devices(api)
 
     suspend fun me(): User = api.users.me().toUser()
+
+    /**
+     * Fetch the deployment's server capabilities (recording enabled,
+     * transcription, telephony, …). Use this to gate UI features per
+     * deployment — e.g. hide the Record button when
+     * `config().recording.isEnabled == false`.
+     *
+     * Returns a snapshot — call again to refresh. The endpoint is
+     * cheap (single Django view) so re-fetching on app resume is fine.
+     */
+    suspend fun config(): ServerCapabilities = api.config.config().toServerCapabilities()
 
     suspend fun createRoom(
         name: String,

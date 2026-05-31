@@ -2,6 +2,7 @@ package io.vopenia.api
 
 import eu.codlab.http.Configuration
 import eu.codlab.http.createClient
+import io.vopenia.api.config.ApiConfigs
 import io.vopenia.api.devices.ApiDevices
 import io.vopenia.api.recordings.ApiRecordings
 import io.vopenia.api.rooms.ApiRooms
@@ -39,4 +40,11 @@ class Api(
      * and [ApiRooms.stopRecording].
      */
     val recordings = ApiRecordings(client, prefix, getAuthent)
+
+    /**
+     * Access the frontend-configuration endpoint (`GET /config/`).
+     * Used to surface server capabilities so the UI can gate features
+     * (recording, transcription, telephony) by deployment.
+     */
+    val config = ApiConfigs(client, prefix, getAuthent)
 }
