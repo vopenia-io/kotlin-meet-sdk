@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.ApiMuteParticipantParam
 import io.vopenia.api.rooms.models.ApiOperationResponse
+import io.vopenia.api.rooms.models.ApiPatchRoomParam
 import io.vopenia.api.rooms.models.ApiRecordingMode
 import io.vopenia.api.rooms.models.ApiRemoveParticipantParam
 import io.vopenia.api.rooms.models.ApiRoom
@@ -50,6 +51,15 @@ class ApiRooms(
      * API endpoints to access and perform actions on rooms. Update an existing room
      */
     suspend fun updateRoom(id: String, param: NewRoomParam): ApiRoom =
+        wrapper.patch("rooms/$id/", param)
+
+    /**
+     * Partial update of an existing room — only the non-null fields of [param]
+     * are sent to the backend. Used in particular to mutate `configuration`
+     * (e.g. `can_publish_sources` for host commands) without re-asserting
+     * `name` / `access_level`.
+     */
+    suspend fun patchRoom(id: String, param: ApiPatchRoomParam): ApiRoom =
         wrapper.patch("rooms/$id/", param)
 
     /**

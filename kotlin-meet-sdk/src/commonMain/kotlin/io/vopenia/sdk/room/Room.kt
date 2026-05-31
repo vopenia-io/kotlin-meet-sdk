@@ -1,11 +1,17 @@
 package io.vopenia.sdk.room
 
+import io.vopenia.api.rooms.models.ApiParticipantPermission
+import io.vopenia.api.rooms.models.ApiPatchRoomParam
 import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.ApiRoom
+import io.vopenia.api.rooms.models.ApiTrackSource
 import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
 import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
+import io.vopenia.livekit.participant.track.Source
 import io.vopenia.livekit.participant.transcription.TranscriptionSegment
+import io.vopenia.livekit.participant.video.VideoResolutionPreset
+import io.vopenia.livekit.participant.video.VideoSubscribeQuality
 import io.vopenia.sdk.Session
 import io.vopenia.sdk.room.chat.ChatMessage
 import io.vopenia.sdk.room.chat.toFacade
@@ -34,6 +40,15 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 // Meet Web (and the LiveKit Components convention) uses `handRaisedAt` whose
 // value is an ISO-8601 timestamp string when the hand is raised, and an empty
@@ -44,6 +59,31 @@ private const val HAND_RAISED_ATTRIBUTE = "handRaisedAt"
 // payloads on the default LiveKit data channel (no topic), with a top-level
 // `type` discriminator. The topic field of `publishData` is left null.
 private const val MEET_REACTION_TYPE = "reactionReceived"
+
+// Meet Web's host commands persist allowed sources at the room level via this
+// key inside `configuration`. Wire values are LiveKit `TrackSource` names
+// ("CAMERA", "MICROPHONE", "SCREEN_SHARE", "SCREEN_SHARE_AUDIO").
+private const val CAN_PUBLISH_SOURCES_KEY = "can_publish_sources"
+
+// LiveKit participant attribute the Meet backend sets to "true" on admin /
+// owner participants. Filtered out when iterating remotes for the host
+// `update-participant` step — admins keep their own permissions.
+private const val ROOM_ADMIN_ATTRIBUTE = "room_admin"
+
+private fun kotlinx.serialization.json.JsonElement?.readCanPublishSources(): Set<Source> {
+    val array = (this as? JsonObject)?.get(CAN_PUBLISH_SOURCES_KEY) as? JsonArray
+        ?: return emptySet()
+    return array.mapNotNull { el ->
+        val raw = runCatching { el.jsonPrimitive.content }.getOrNull() ?: return@mapNotNull null
+        when (raw) {
+            ApiTrackSource.CAMERA -> Source.CAMERA
+            ApiTrackSource.MICROPHONE -> Source.MICROPHONE
+            ApiTrackSource.SCREEN_SHARE -> Source.SCREEN_SHARE
+            ApiTrackSource.SCREEN_SHARE_AUDIO -> Source.SCREEN_SHARE_AUDIO
+            else -> null
+        }
+    }.toSet()
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 data class Room(
@@ -162,11 +202,12 @@ data class Room(
     // -- Raise hand ----------------------------------------------------------
 
     /**
-     * Map of `participantIdentity -> handRaised` aggregated from LiveKit
-     * participant attributes (`handRaised` key). The local participant is
-     * included. Use the value as the source of truth for the UI.
+     * Internal map `participantIdentity -> handRaisedAt ISO timestamp` (or null
+     * when the hand is not raised). Drives both [handStates] (boolean view) and
+     * [handRaisedOrder] (chronological queue) — they stay in sync because they
+     * are projections of the same source flow.
      */
-    val handStates: StateFlow<Map<String, Boolean>> = combine(
+    private val handTimestamps: StateFlow<Map<String, String?>> = combine(
         localParticipant.state,
         remoteParticipant.flatMapLatest { participants ->
             if (participants.isEmpty()) flowOf(emptyList())
@@ -176,18 +217,37 @@ data class Room(
         }
     ) { localState, remoteList ->
         buildMap {
-            localParticipant.identity?.let { put(it, localState.attributes.isHandRaised()) }
+            localParticipant.identity?.let { put(it, localState.attributes.handRaisedAtOrNull()) }
             remoteList.forEach { (identity, attrs) ->
-                if (identity != null) put(identity, attrs.isHandRaised())
+                if (identity != null) put(identity, attrs.handRaisedAtOrNull())
             }
         }
     }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
-    private fun Map<String, String>.isHandRaised(): Boolean {
-        val value = this[HAND_RAISED_ATTRIBUTE] ?: return false
-        // Meet Web convention: presence of a non-empty ISO timestamp = raised.
-        return value.isNotEmpty()
-    }
+    /**
+     * Map of `participantIdentity -> handRaised` aggregated from LiveKit
+     * participant attributes (`handRaisedAt` key). The local participant is
+     * included. Use the value as the source of truth for the UI.
+     */
+    val handStates: StateFlow<Map<String, Boolean>> = handTimestamps
+        .map(scope) { snapshot -> snapshot.mapValues { (_, ts) -> ts != null } }
+
+    /**
+     * Ordered list of participants who currently have their hand raised, sorted
+     * by raise time (oldest first). Meet Web uses this to render a numbered
+     * queue (#1 highlighted) and decrement positions live when someone lowers
+     * their hand. ISO-8601 timestamp strings sort lexicographically the same
+     * way they sort chronologically — no parsing required.
+     */
+    val handRaisedOrder: StateFlow<List<String>> = handTimestamps
+        .map(scope) { snapshot ->
+            snapshot.mapNotNull { (id, ts) -> ts?.let { id to it } }
+                .sortedBy { (_, ts) -> ts }
+                .map { (id, _) -> id }
+        }
+
+    private fun Map<String, String>.handRaisedAtOrNull(): String? =
+        this[HAND_RAISED_ATTRIBUTE]?.takeIf { it.isNotEmpty() }
 
     /**
      * Raise or lower the local participant's hand. Backed by the LiveKit
@@ -199,6 +259,108 @@ data class Room(
         val value = if (raised) currentTimeMillisToIso() else ""
         localParticipant.updateAttributes(mapOf(HAND_RAISED_ATTRIBUTE to value))
     }
+
+    // -- Host commands (can_publish_sources) ---------------------------------
+
+    private val canPublishSourcesFlow: MutableStateFlow<Set<Source>> =
+        MutableStateFlow(internalRoom.configuration.readCanPublishSources())
+
+    /**
+     * The set of sources currently allowed to be published in this room
+     * (room-default), derived from `configuration.can_publish_sources`. Driven
+     * by [setPublishSources] / [setSourceAllowed]; not yet refreshed when the
+     * room PATCHes from elsewhere (TODO: hook to a Room metadata observer).
+     */
+    val canPublishSources: StateFlow<Set<Source>> = canPublishSourcesFlow.asStateFlow()
+
+    /**
+     * Replace the room-default `can_publish_sources` (PATCH the room) **and**
+     * push the new permission live to every non-admin remote participant
+     * currently connected. Admin/owner only.
+     *
+     * - Screen-share is bound to *two* LiveKit sources: include
+     *   [Source.SCREEN_SHARE] **and** [Source.SCREEN_SHARE_AUDIO] together
+     *   if you want screen sharing allowed.
+     * - The local participant is intentionally not updated through the
+     *   `update-participant` step — admins keep their own permissions.
+     */
+    suspend fun setPublishSources(sources: Set<Source>) {
+        val wire = sources.map { it.toWireString() }
+        val nextConfiguration = mergeConfiguration(internalRoom.configuration, wire)
+        val updated = session.api.rooms.patchRoom(
+            id,
+            ApiPatchRoomParam(configuration = nextConfiguration)
+        )
+        internalRoom = updated
+        canPublishSourcesFlow.value = sources
+
+        val livePermission = ApiParticipantPermission(
+            canPublish = sources.isNotEmpty(),
+            canPublishSources = wire
+        )
+        remoteParticipant.value.forEach { remote ->
+            val identity = remote.identity ?: return@forEach
+            if (remote.state.value.attributes[ROOM_ADMIN_ATTRIBUTE] == "true") return@forEach
+            runCatching {
+                session.api.rooms.updateParticipant(
+                    id,
+                    ApiUpdateParticipantParam(
+                        participantIdentity = identity,
+                        permission = livePermission
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Convenience: flip a single source on or off, keeping the rest as-is.
+     * For screen sharing, both [Source.SCREEN_SHARE] and
+     * [Source.SCREEN_SHARE_AUDIO] are toggled together.
+     */
+    suspend fun setSourceAllowed(source: Source, allowed: Boolean) {
+        val current = canPublishSourcesFlow.value
+        val pair = when (source) {
+            Source.SCREEN_SHARE, Source.SCREEN_SHARE_AUDIO ->
+                setOf(Source.SCREEN_SHARE, Source.SCREEN_SHARE_AUDIO)
+            else -> setOf(source)
+        }
+        val next = if (allowed) current + pair else current - pair
+        setPublishSources(next)
+    }
+
+    private fun Source.toWireString(): String = when (this) {
+        Source.CAMERA -> ApiTrackSource.CAMERA
+        Source.MICROPHONE -> ApiTrackSource.MICROPHONE
+        Source.SCREEN_SHARE -> ApiTrackSource.SCREEN_SHARE
+        Source.SCREEN_SHARE_AUDIO -> ApiTrackSource.SCREEN_SHARE_AUDIO
+        Source.UNKNOWN -> ApiTrackSource.MICROPHONE // unreachable in practice
+    }
+
+    private fun mergeConfiguration(current: kotlinx.serialization.json.JsonElement?, wire: List<String>): JsonObject =
+        buildJsonObject {
+            val src = current as? JsonObject
+            src?.forEach { (k, v) -> if (k != CAN_PUBLISH_SOURCES_KEY) put(k, v) }
+            put(CAN_PUBLISH_SOURCES_KEY, buildJsonArray { wire.forEach { add(it) } })
+        }
+
+    // -- Video resolution ----------------------------------------------------
+
+    /**
+     * Set the resolution of the **outgoing** camera. The preset is forwarded
+     * to the underlying `LocalParticipant.setMaxSendingResolution` and persists
+     * so a camera track that publishes later in the call adopts it.
+     */
+    suspend fun setMaxSendingResolution(preset: VideoResolutionPreset) =
+        localParticipant.setMaxSendingResolution(preset)
+
+    /**
+     * Cap the receiving quality of every remote **camera** track. Screen-share
+     * tracks are not capped (the user wants them sharp). The cap is remembered
+     * and re-applied to any new camera publication.
+     */
+    fun setMaxReceivingQuality(quality: VideoSubscribeQuality) =
+        liveKitRoom.setMaxReceivingQuality(quality)
 
     // -- Recording -----------------------------------------------------------
 
