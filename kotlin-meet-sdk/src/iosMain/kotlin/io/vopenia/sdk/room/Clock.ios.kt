@@ -5,6 +5,7 @@ import platform.Foundation.NSISO8601DateFormatOptions
 import platform.Foundation.NSISO8601DateFormatter
 import platform.Foundation.NSISO8601DateFormatWithFractionalSeconds
 import platform.Foundation.NSISO8601DateFormatWithInternetDateTime
+import platform.Foundation.NSUUID
 import platform.Foundation.timeIntervalSince1970
 
 internal actual fun currentTimeMillis(): Long =
@@ -17,3 +18,5 @@ private val isoFormatter: NSISO8601DateFormatter = NSISO8601DateFormatter().appl
 
 internal actual fun currentTimeMillisToIso(): String =
     isoFormatter.stringFromDate(NSDate())
+
+internal actual fun newUuid(): String = NSUUID().UUIDString()

@@ -18,7 +18,17 @@ import io.vopenia.sdk.room.chat.toFacade
 import io.vopenia.sdk.room.reactions.MeetNotificationEnvelope
 import io.vopenia.sdk.room.reactions.MeetReactionData
 import io.vopenia.sdk.room.reactions.MeetReactionEmoji
+import io.vopenia.sdk.room.reactions.MeetTypedNotificationEnvelope
 import io.vopenia.sdk.room.reactions.Reaction
+import io.vopenia.sdk.room.recording.TOOL_START_ANSWERED
+import io.vopenia.sdk.room.recording.TOOL_START_CANCELLED
+import io.vopenia.sdk.room.recording.TOOL_START_REQUESTED
+import io.vopenia.sdk.room.recording.ToolRequestStatus
+import io.vopenia.sdk.room.recording.ToolStartAnsweredPayload
+import io.vopenia.sdk.room.recording.ToolStartCancelledPayload
+import io.vopenia.sdk.room.recording.ToolStartRequest
+import io.vopenia.sdk.room.recording.ToolStartRequestHandle
+import io.vopenia.sdk.room.recording.ToolStartRequestedPayload
 import io.vopenia.sdk.room.recording.RecordingHandle
 import io.vopenia.sdk.room.recording.RecordingMode
 import io.vopenia.sdk.room.recording.RecordingState
@@ -27,6 +37,7 @@ import io.vopenia.sdk.utils.Dispatchers
 import io.vopenia.sdk.utils.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,6 +70,15 @@ private const val HAND_RAISED_ATTRIBUTE = "handRaisedAt"
 // payloads on the default LiveKit data channel (no topic), with a top-level
 // `type` discriminator. The topic field of `publishData` is left null.
 private const val MEET_REACTION_TYPE = "reactionReceived"
+
+// Meet Web notification `type` discriminators that announce a recording
+// transition before LiveKit's RecordingStatusChanged event arrives. We use
+// them to recover the *mode* of an in-flight recording, which the LiveKit
+// `Room.isRecording` flag doesn't carry on its own.
+private const val MEET_TRANSCRIPTION_STARTED = "transcriptionStarted"
+private const val MEET_TRANSCRIPTION_STOPPED = "transcriptionStopped"
+private const val MEET_SCREEN_RECORDING_STARTED = "screenRecordingStarted"
+private const val MEET_SCREEN_RECORDING_STOPPED = "screenRecordingStopped"
 
 // Meet Web's host commands persist allowed sources at the room level via this
 // key inside `configuration`. Wire values are LiveKit `TrackSource` names
@@ -367,7 +387,73 @@ data class Room(
     private val recordingStateFlow: MutableStateFlow<RecordingState> =
         MutableStateFlow(RecordingState.Idle)
 
+    /**
+     * Optimistic local recording state — driven by the [startRecording] /
+     * [stopRecording] calls made through this very façade. Not influenced by
+     * recordings triggered elsewhere; see [isRecordingActive] for the
+     * server-wide truth.
+     */
     val recordingState: StateFlow<RecordingState> = recordingStateFlow.asStateFlow()
+
+    /**
+     * Mirrors LiveKit's `Room.isRecording` — `true` while a server-side
+     * Egress (any mode) is active in this room, regardless of who started
+     * it. Use this rather than [recordingState] when rendering a global
+     * "recording in progress" indicator: it stays accurate when another
+     * participant (or the web) starts/stops the recording, or when the
+     * local participant joins mid-recording.
+     */
+    val isRecordingActive: StateFlow<Boolean> = liveKitRoom.isRecording
+
+    private val currentRecordingModeFlow: MutableStateFlow<RecordingMode?> =
+        MutableStateFlow(null)
+
+    /**
+     * Mode of the currently active server recording, recovered from the Meet
+     * `transcriptionStarted` / `screenRecordingStarted` notifications that
+     * precede LiveKit's RecordingStatusChanged event. `null` while no
+     * recording is active **or** while we joined mid-recording before the
+     * announcing notification arrived (mirrors Meet Web's `ANY_STARTED`).
+     */
+    val currentRecordingMode: StateFlow<RecordingMode?> = currentRecordingModeFlow.asStateFlow()
+
+    init {
+        // Observe data-channel notifications to recover the active recording
+        // mode and to clear it on stop. `liveKitRoom.isRecording` provides
+        // the boolean truth; the announcing notification provides the mode.
+        scope.launch {
+            merge(
+                localParticipant.dataReceived,
+                remoteParticipant.flatMapLatest { participants ->
+                    if (participants.isEmpty()) flowOf()
+                    else merge(*participants.map { it.dataReceived }.toTypedArray())
+                }
+            ).collect { packet ->
+                val type = runCatching {
+                    Json.decodeFromString(
+                        MeetNotificationEnvelope.serializer(),
+                        packet.payload.decodeToString()
+                    )
+                }.getOrNull()?.type ?: return@collect
+                when (type) {
+                    MEET_TRANSCRIPTION_STARTED ->
+                        currentRecordingModeFlow.value = RecordingMode.Transcript
+                    MEET_SCREEN_RECORDING_STARTED ->
+                        currentRecordingModeFlow.value = RecordingMode.ScreenRecording
+                    MEET_TRANSCRIPTION_STOPPED, MEET_SCREEN_RECORDING_STOPPED ->
+                        currentRecordingModeFlow.value = null
+                }
+            }
+        }
+        // Clear the mode when the underlying recording stops for any reason
+        // (server end, Egress crash, etc.) even if no Stopped notification
+        // arrives.
+        scope.launch {
+            liveKitRoom.isRecording.collect { active ->
+                if (!active) currentRecordingModeFlow.value = null
+            }
+        }
+    }
 
     /**
      * Start an Egress recording on the room. Returns a [RecordingHandle] tracking
@@ -400,6 +486,212 @@ data class Room(
             recordingStateFlow.value = previous
             throw err
         }
+    }
+
+    // -- Tool start request (Record/Transcribe restricted) ------------------
+
+    /**
+     * TTL beyond which an unanswered request is shown as `Expired` to the
+     * demander and dropped from the admin's [toolStartRequests] list. Matches
+     * Meet Web's `RestrictedToolAccess` UX where the toast disappears after
+     * ~60 s of no answer.
+     */
+    private val toolRequestTtlMs: Long = 60_000L
+
+    private val toolStartRequestsFlow: MutableStateFlow<List<ToolStartRequest>> =
+        MutableStateFlow(emptyList())
+
+    /**
+     * List of pending "Start recording / transcription" requests issued by
+     * non-admin participants. Only meaningful when the local participant is
+     * admin/owner. Updated live as requests arrive, get answered, or expire.
+     */
+    val toolStartRequests: StateFlow<List<ToolStartRequest>> = toolStartRequestsFlow.asStateFlow()
+
+    private val pendingOutgoingRequests: MutableMap<String, MutableStateFlow<ToolRequestStatus>> =
+        mutableMapOf()
+
+    init {
+        // Listen for tool-request envelopes on the data channel.
+        scope.launch {
+            merge(
+                localParticipant.dataReceived,
+                remoteParticipant.flatMapLatest { participants ->
+                    if (participants.isEmpty()) flowOf()
+                    else merge(*participants.map { it.dataReceived }.toTypedArray())
+                }
+            ).collect { packet ->
+                val envelope = runCatching {
+                    Json.decodeFromString(
+                        MeetTypedNotificationEnvelope.serializer(),
+                        packet.payload.decodeToString()
+                    )
+                }.getOrNull() ?: return@collect
+                when (envelope.type) {
+                    TOOL_START_REQUESTED -> {
+                        val data = envelope.data ?: return@collect
+                        val payload = runCatching {
+                            Json.decodeFromJsonElement(
+                                ToolStartRequestedPayload.serializer(), data
+                            )
+                        }.getOrNull() ?: return@collect
+                        onIncomingToolStartRequest(packet.senderIdentity, payload)
+                    }
+                    TOOL_START_ANSWERED -> {
+                        val data = envelope.data ?: return@collect
+                        val payload = runCatching {
+                            Json.decodeFromJsonElement(
+                                ToolStartAnsweredPayload.serializer(), data
+                            )
+                        }.getOrNull() ?: return@collect
+                        onToolStartAnswered(payload)
+                    }
+                    TOOL_START_CANCELLED -> {
+                        val data = envelope.data ?: return@collect
+                        val payload = runCatching {
+                            Json.decodeFromJsonElement(
+                                ToolStartCancelledPayload.serializer(), data
+                            )
+                        }.getOrNull() ?: return@collect
+                        toolStartRequestsFlow.value = toolStartRequestsFlow.value
+                            .filter { it.requestId != payload.requestId }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun onIncomingToolStartRequest(
+        senderIdentity: String?,
+        payload: ToolStartRequestedPayload
+    ) {
+        if (senderIdentity == null) return
+        // Resolve sender name from the remote participant state when available.
+        val name = remoteParticipant.value
+            .firstOrNull { it.identity == senderIdentity }
+            ?.state?.value?.name
+            ?: payload.requesterName
+        val request = ToolStartRequest(
+            requestId = payload.requestId,
+            requesterIdentity = senderIdentity,
+            requesterName = name,
+            mode = when (payload.mode) {
+                io.vopenia.api.rooms.models.ApiRecordingMode.SCREEN_RECORDING ->
+                    RecordingMode.ScreenRecording
+                io.vopenia.api.rooms.models.ApiRecordingMode.TRANSCRIPT ->
+                    RecordingMode.Transcript
+            },
+            timestamp = payload.timestamp
+        )
+        // Replace any existing entry with the same id (deduplication on retry).
+        toolStartRequestsFlow.value = toolStartRequestsFlow.value
+            .filter { it.requestId != request.requestId } + request
+        // Schedule an expiry sweep.
+        scope.launch {
+            kotlinx.coroutines.delay(toolRequestTtlMs)
+            toolStartRequestsFlow.value = toolStartRequestsFlow.value
+                .filter { it.requestId != request.requestId }
+        }
+    }
+
+    private fun onToolStartAnswered(payload: ToolStartAnsweredPayload) {
+        pendingOutgoingRequests.remove(payload.requestId)?.value =
+            if (payload.accepted) ToolRequestStatus.Accepted else ToolRequestStatus.Rejected
+    }
+
+    /**
+     * Issue a "please start this tool" request to the room's admins/owners.
+     * Returns a [ToolStartRequestHandle] whose [ToolStartRequestHandle.status]
+     * is observable: `Pending` until an admin answers, then `Accepted`
+     * (the tool actually started server-side) or `Rejected`. After
+     * `toolRequestTtlMs` of silence the handle moves to `Expired`.
+     *
+     * Available to any participant — admins normally call [startRecording]
+     * directly and don't go through this flow.
+     */
+    suspend fun requestToolStart(mode: RecordingMode): ToolStartRequestHandle {
+        val requestId = newUuid()
+        val now = currentTimeMillis()
+        val statusFlow: MutableStateFlow<ToolRequestStatus> =
+            MutableStateFlow(ToolRequestStatus.Pending)
+        pendingOutgoingRequests[requestId] = statusFlow
+
+        val envelope = MeetTypedNotificationEnvelope(
+            type = TOOL_START_REQUESTED,
+            data = Json.encodeToJsonElement(
+                ToolStartRequestedPayload.serializer(),
+                ToolStartRequestedPayload(
+                    requestId = requestId,
+                    requesterName = localParticipant.state.value.name,
+                    mode = when (mode) {
+                        RecordingMode.ScreenRecording ->
+                            io.vopenia.api.rooms.models.ApiRecordingMode.SCREEN_RECORDING
+                        RecordingMode.Transcript ->
+                            io.vopenia.api.rooms.models.ApiRecordingMode.TRANSCRIPT
+                    },
+                    timestamp = now
+                )
+            )
+        )
+        publishToolNotification(envelope)
+
+        // Local expiry — flip Pending → Expired after the TTL if still pending.
+        scope.launch {
+            kotlinx.coroutines.delay(toolRequestTtlMs)
+            if (statusFlow.value == ToolRequestStatus.Pending) {
+                statusFlow.value = ToolRequestStatus.Expired
+                pendingOutgoingRequests.remove(requestId)
+            }
+        }
+        return object : ToolStartRequestHandle {
+            override val requestId: String = requestId
+            override val mode: RecordingMode = mode
+            override val status: StateFlow<ToolRequestStatus> = statusFlow.asStateFlow()
+            override suspend fun cancel() {
+                if (statusFlow.value != ToolRequestStatus.Pending) return
+                statusFlow.value = ToolRequestStatus.Expired
+                pendingOutgoingRequests.remove(requestId)
+                publishToolNotification(
+                    MeetTypedNotificationEnvelope(
+                        type = TOOL_START_CANCELLED,
+                        data = Json.encodeToJsonElement(
+                            ToolStartCancelledPayload.serializer(),
+                            ToolStartCancelledPayload(requestId)
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Admin-side answer to a pending [ToolStartRequest]. When `accept` is true
+     * AND the local participant has the permission, calls [startRecording]
+     * for the request's mode; either way broadcasts a `toolStartAnswered`
+     * notification so the demander observes the result.
+     */
+    suspend fun answerToolStartRequest(requestId: String, accept: Boolean) {
+        val request = toolStartRequestsFlow.value.firstOrNull { it.requestId == requestId } ?: return
+        toolStartRequestsFlow.value = toolStartRequestsFlow.value.filter { it.requestId != requestId }
+        publishToolNotification(
+            MeetTypedNotificationEnvelope(
+                type = TOOL_START_ANSWERED,
+                data = Json.encodeToJsonElement(
+                    ToolStartAnsweredPayload.serializer(),
+                    ToolStartAnsweredPayload(requestId, accept)
+                )
+            )
+        )
+        if (accept) {
+            runCatching { startRecording(request.mode) }
+        }
+    }
+
+    private suspend fun publishToolNotification(envelope: MeetTypedNotificationEnvelope) {
+        val bytes = Json.encodeToString(
+            MeetTypedNotificationEnvelope.serializer(), envelope
+        ).encodeToByteArray()
+        localParticipant.publishData(bytes, reliable = true, topic = null)
     }
 
     // -- Transcription -------------------------------------------------------

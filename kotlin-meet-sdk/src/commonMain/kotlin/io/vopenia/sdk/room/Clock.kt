@@ -9,3 +9,9 @@ internal expect fun currentTimeMillis(): Long
  * (`new Date().toISOString()`).
  */
 internal expect fun currentTimeMillisToIso(): String
+
+/**
+ * Returns a random UUID-string suitable for cross-participant correlation
+ * (e.g. tool-request id). RFC 4122 v4 on all platforms.
+ */
+internal expect fun newUuid(): String
