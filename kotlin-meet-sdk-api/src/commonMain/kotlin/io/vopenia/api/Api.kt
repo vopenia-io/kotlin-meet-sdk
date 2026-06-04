@@ -7,6 +7,7 @@ import io.vopenia.api.devices.ApiDevices
 import io.vopenia.api.recordings.ApiRecordings
 import io.vopenia.api.rooms.ApiRooms
 import io.vopenia.api.users.ApiUsers
+import kotlinx.serialization.json.Json
 
 class Api(
     prefix: String,
@@ -14,7 +15,21 @@ class Api(
     getAuthent: suspend () -> AuthenticationInformation?,
 ) {
     private val client = createClient(
-        Configuration(enableLogs = enableHttpLogs)
+        Configuration(
+            // explicitNulls = false is REQUIRED: partial-update DTOs like
+            // ApiPatchRoomParam leave name/access_level null to mean "leave
+            // unchanged". With the default (explicitNulls = true) those nulls are
+            // serialized and the Django backend rejects e.g. `name: null` with a
+            // 400 on PATCH rooms/{id}/ (host-commands publish toggles). Meet Web
+            // sends only the changed keys; this matches that contract.
+            json = Json {
+                explicitNulls = false
+                encodeDefaults = true
+                ignoreUnknownKeys = true
+                prettyPrint = true
+            },
+            enableLogs = enableHttpLogs,
+        )
     ) {
         // nothing
     }

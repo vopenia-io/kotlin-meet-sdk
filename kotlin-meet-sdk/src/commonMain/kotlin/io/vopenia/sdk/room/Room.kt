@@ -95,14 +95,34 @@ private fun kotlinx.serialization.json.JsonElement?.readCanPublishSources(): Set
         ?: return emptySet()
     return array.mapNotNull { el ->
         val raw = runCatching { el.jsonPrimitive.content }.getOrNull() ?: return@mapNotNull null
-        when (raw) {
-            ApiTrackSource.CAMERA -> Source.CAMERA
-            ApiTrackSource.MICROPHONE -> Source.MICROPHONE
-            ApiTrackSource.SCREEN_SHARE -> Source.SCREEN_SHARE
-            ApiTrackSource.SCREEN_SHARE_AUDIO -> Source.SCREEN_SHARE_AUDIO
-            else -> null
-        }
+        sourceFromWire(raw)
     }.toSet()
+}
+
+/**
+ * Whether `configuration` carries an explicit `can_publish_sources` array. An
+ * absent (or non-array) key means the room was never configured — callers fall
+ * back to the deployment-wide `default_sources` rather than "nobody may publish".
+ */
+private fun kotlinx.serialization.json.JsonElement?.hasExplicitCanPublishSources(): Boolean =
+    (this as? JsonObject)?.get(CAN_PUBLISH_SOURCES_KEY) is JsonArray
+
+/** Map source wire names from the room `configuration` / `default_sources` to [Source]. */
+private fun List<String>.toSourceSet(): Set<Source> = mapNotNull { sourceFromWire(it) }.toSet()
+
+/**
+ * Parse a source wire name. The room `configuration.can_publish_sources` and the
+ * deployment `default_sources` use the LOWERCASE LiveKit names (`camera`,
+ * `microphone`, `screen_share`, `screen_share_audio`) — Meet Web writes raw
+ * `Track.Source` values there. Matched case-insensitively so the UPPERCASE
+ * participant-permission spelling is also tolerated.
+ */
+private fun sourceFromWire(raw: String): Source? = when (raw.lowercase()) {
+    "camera" -> Source.CAMERA
+    "microphone" -> Source.MICROPHONE
+    "screen_share" -> Source.SCREEN_SHARE
+    "screen_share_audio" -> Source.SCREEN_SHARE_AUDIO
+    else -> null
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -146,6 +166,18 @@ data class Room(
 
     val isAdministrable: Boolean
         get() = internalRoom.isAdministrable
+
+    /**
+     * Whether the room already granted LiveKit connection credentials for the
+     * current user — true for the owner, a participant with explicit access, or
+     * a public room. Mirrors Meet Web's `data.livekit` presence check in `Join`:
+     * when true the client connects directly; when false it must go through the
+     * lobby (`requestEntry`). Without this, an organizer joining their own
+     * `restricted`/`trusted` room is wrongly sent to the waiting room (and can
+     * lock themselves out when alone).
+     */
+    val canConnectDirectly: Boolean
+        get() = livekit != null
 
     // -- Chat ----------------------------------------------------------------
 
@@ -293,6 +325,29 @@ data class Room(
      */
     val canPublishSources: StateFlow<Set<Source>> = canPublishSourcesFlow.asStateFlow()
 
+    init {
+        // Meet Web falls back to the deployment-wide `default_sources` (GET /config/)
+        // when a room never configured `can_publish_sources`. Mirror that: leaving an
+        // empty set here would read as "nobody may publish" (all host toggles OFF),
+        // and the first toggle would unintentionally restrict the other sources. The
+        // default lives in the server config payload, not the room metadata, so this
+        // seed is async — host toggles converge once it returns. A room with an
+        // explicit (even empty) `can_publish_sources` is respected as-is.
+        if (!internalRoom.configuration.hasExplicitCanPublishSources()) {
+            scope.launch {
+                val defaults = runCatching {
+                    session.api.config.config().livekit?.defaultSources.orEmpty().toSourceSet()
+                }.getOrNull() ?: return@launch
+                // Don't clobber an explicit value that arrived in the meantime.
+                if (!internalRoom.configuration.hasExplicitCanPublishSources() &&
+                    canPublishSourcesFlow.value.isEmpty()
+                ) {
+                    canPublishSourcesFlow.value = defaults
+                }
+            }
+        }
+    }
+
     /**
      * Replace the room-default `can_publish_sources` (PATCH the room) **and**
      * push the new permission live to every non-admin remote participant
@@ -305,8 +360,14 @@ data class Room(
      *   `update-participant` step — admins keep their own permissions.
      */
     suspend fun setPublishSources(sources: Set<Source>) {
-        val wire = sources.map { it.toWireString() }
-        val nextConfiguration = mergeConfiguration(internalRoom.configuration, wire)
+        // Two distinct casings, mirroring Meet Web:
+        //  - room `configuration.can_publish_sources` uses the LOWERCASE LiveKit
+        //    source names (raw Track.Source values) — the backend rejects
+        //    uppercase with a 400 literal_error.
+        //  - the participant `permission.can_publish_sources` (update-participant)
+        //    uses the UPPERCASE names (Meet does `source.toUpperCase()`).
+        val configWire = sources.map { it.toConfigWire() }
+        val nextConfiguration = mergeConfiguration(internalRoom.configuration, configWire)
         val updated = session.api.rooms.patchRoom(
             id,
             ApiPatchRoomParam(configuration = nextConfiguration)
@@ -316,7 +377,7 @@ data class Room(
 
         val livePermission = ApiParticipantPermission(
             canPublish = sources.isNotEmpty(),
-            canPublishSources = wire
+            canPublishSources = sources.map { it.toWireString() }
         )
         remoteParticipant.value.forEach { remote ->
             val identity = remote.identity ?: return@forEach
@@ -349,12 +410,22 @@ data class Room(
         setPublishSources(next)
     }
 
+    /** UPPERCASE name for the participant `permission.can_publish_sources` (update-participant). */
     private fun Source.toWireString(): String = when (this) {
         Source.CAMERA -> ApiTrackSource.CAMERA
         Source.MICROPHONE -> ApiTrackSource.MICROPHONE
         Source.SCREEN_SHARE -> ApiTrackSource.SCREEN_SHARE
         Source.SCREEN_SHARE_AUDIO -> ApiTrackSource.SCREEN_SHARE_AUDIO
         Source.UNKNOWN -> ApiTrackSource.MICROPHONE // unreachable in practice
+    }
+
+    /** Lowercase name for the room `configuration.can_publish_sources` (Meet Web format). */
+    private fun Source.toConfigWire(): String = when (this) {
+        Source.CAMERA -> "camera"
+        Source.MICROPHONE -> "microphone"
+        Source.SCREEN_SHARE -> "screen_share"
+        Source.SCREEN_SHARE_AUDIO -> "screen_share_audio"
+        Source.UNKNOWN -> "microphone" // unreachable in practice
     }
 
     private fun mergeConfiguration(current: kotlinx.serialization.json.JsonElement?, wire: List<String>): JsonObject =
