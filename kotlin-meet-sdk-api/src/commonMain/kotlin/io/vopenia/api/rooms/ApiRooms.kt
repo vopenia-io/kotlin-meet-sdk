@@ -1,6 +1,7 @@
 package io.vopenia.api.rooms
 
 import io.ktor.client.HttpClient
+import io.ktor.http.encodeURLQueryComponent
 import io.vopenia.api.AuthenticationInformation
 import io.vopenia.api.rooms.models.ApiMuteParticipantParam
 import io.vopenia.api.rooms.models.ApiOperationResponse
@@ -35,8 +36,16 @@ class ApiRooms(
     /**
      * API endpoints to access and perform actions on rooms. Create a new room
      */
-    suspend fun room(slug: String): ApiRoom? = try {
-        wrapper.get("rooms/${slug}")
+    suspend fun room(slug: String, username: String? = null): ApiRoom? = try {
+        // Pass the display name as ?username= so the backend mints the LiveKit
+        // token with it (with_name(username or default)). Without it an
+        // unauthenticated guest gets name="Anonymous". Mirrors Meet Web's
+        // fetchRoom(`/rooms/${roomId}?username=`).
+        val query = username
+            ?.takeIf { it.isNotBlank() }
+            ?.let { "?username=${it.encodeURLQueryComponent()}" }
+            ?: ""
+        wrapper.get("rooms/${slug}$query")
     } catch (err: Throwable) {
         null
     }

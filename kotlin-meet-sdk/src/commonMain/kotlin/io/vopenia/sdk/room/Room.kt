@@ -4,7 +4,6 @@ import io.vopenia.api.rooms.models.ApiParticipantPermission
 import io.vopenia.api.rooms.models.ApiPatchRoomParam
 import io.vopenia.api.rooms.models.ApiRequestEntryAnswer
 import io.vopenia.api.rooms.models.ApiRoom
-import io.vopenia.api.rooms.models.ApiTrackSource
 import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
 import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
@@ -360,12 +359,14 @@ data class Room(
      *   `update-participant` step — admins keep their own permissions.
      */
     suspend fun setPublishSources(sources: Set<Source>) {
-        // Two distinct casings, mirroring Meet Web:
-        //  - room `configuration.can_publish_sources` uses the LOWERCASE LiveKit
-        //    source names (raw Track.Source values) — the backend rejects
-        //    uppercase with a 400 literal_error.
-        //  - the participant `permission.can_publish_sources` (update-participant)
-        //    uses the UPPERCASE names (Meet does `source.toUpperCase()`).
+        // BOTH the room `configuration.can_publish_sources` AND the participant
+        // `permission.can_publish_sources` (update-participant) use the LOWERCASE
+        // LiveKit source names (camera / microphone / screen_share / screen_share_audio).
+        // The backend validates the participant permission with a pydantic Literal and
+        // rejects UPPERCASE with a 400 literal_error (confirmed 2026-06-05 from logcat).
+        // NB: Meet Web still sends `source.toUpperCase()` here
+        // (updateParticipantPermissions.ts) — same latent bug; it only works for the
+        // disable case (empty list, nothing to validate).
         val configWire = sources.map { it.toConfigWire() }
         val nextConfiguration = mergeConfiguration(internalRoom.configuration, configWire)
         val updated = session.api.rooms.patchRoom(
@@ -377,7 +378,7 @@ data class Room(
 
         val livePermission = ApiParticipantPermission(
             canPublish = sources.isNotEmpty(),
-            canPublishSources = sources.map { it.toWireString() }
+            canPublishSources = sources.map { it.toConfigWire() }
         )
         remoteParticipant.value.forEach { remote ->
             val identity = remote.identity ?: return@forEach
@@ -410,16 +411,11 @@ data class Room(
         setPublishSources(next)
     }
 
-    /** UPPERCASE name for the participant `permission.can_publish_sources` (update-participant). */
-    private fun Source.toWireString(): String = when (this) {
-        Source.CAMERA -> ApiTrackSource.CAMERA
-        Source.MICROPHONE -> ApiTrackSource.MICROPHONE
-        Source.SCREEN_SHARE -> ApiTrackSource.SCREEN_SHARE
-        Source.SCREEN_SHARE_AUDIO -> ApiTrackSource.SCREEN_SHARE_AUDIO
-        Source.UNKNOWN -> ApiTrackSource.MICROPHONE // unreachable in practice
-    }
-
-    /** Lowercase name for the room `configuration.can_publish_sources` (Meet Web format). */
+    /**
+     * Lowercase name for `can_publish_sources` — used by BOTH the room
+     * `configuration` PATCH and the participant `permission` (update-participant).
+     * The backend validates against the lowercase LiveKit source literals.
+     */
     private fun Source.toConfigWire(): String = when (this) {
         Source.CAMERA -> "camera"
         Source.MICROPHONE -> "microphone"
@@ -838,6 +834,21 @@ data class Room(
     }
 
     // -- Connection lifecycle ------------------------------------------------
+
+    /**
+     * Re-mint the LiveKit token so it carries [displayName] on the DIRECT-connect
+     * path. The room is fetched (and its token minted) at navigation time, before
+     * the user types their name in prejoin, so that token carries the backend
+     * default ("Anonymous" for an unauthenticated guest). Mirrors Meet Web, which
+     * GETs the room with `?username=` before entering. No-op on the lobby path:
+     * the request-entry credentials already carry the typed name (and are preferred
+     * by the [livekit] getter). Best-effort — a failed refetch leaves the existing
+     * token untouched so connect still proceeds.
+     */
+    suspend fun refreshDisplayName(displayName: String) {
+        if (currentRequestEntryManager != null) return
+        session.api.rooms.room(slug, displayName)?.let { internalRoom = it }
+    }
 
     suspend fun connect(enableMicrophone: Boolean = true) {
         if (null == livekit) throw IllegalStateException("Can't connect without livekit credentials")
