@@ -307,8 +307,17 @@ data class Room(
      * the convention used by the Meet Web frontend (`hooks/useRaisedHand.ts`).
      */
     suspend fun raiseHand(raised: Boolean) {
-        val value = if (raised) currentTimeMillisToIso() else ""
-        localParticipant.updateAttributes(mapOf(HAND_RAISED_ATTRIBUTE to value))
+        // The deployed meet backend revokes `canUpdateOwnMetadata` on the LiveKit
+        // token (upstream suitenumerique/meet 6180ac4e, 2026-04-03), so a client-side
+        // localParticipant.updateAttributes(handRaisedAt) is rejected NOT_ALLOWED and
+        // never propagates. Route through the backend `toggle-hand` endpoint
+        // (authenticated by the LiveKit token), exactly like Meet Web
+        // (useRaisedHand.ts -> updateRaiseHand.ts). The backend stamps `handRaisedAt`
+        // and writes it via the server SDK, then it is broadcast to everyone —
+        // including this participant (server-initiated, so it is echoed back here too).
+        val token = livekit?.token
+            ?: throw IllegalStateException("Can't raise hand without livekit credentials")
+        session.api.rooms.toggleHand(id, raised, token)
     }
 
     // -- Host commands (can_publish_sources) ---------------------------------

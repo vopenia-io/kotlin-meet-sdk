@@ -9,6 +9,7 @@ import io.vopenia.api.rooms.models.ApiPatchRoomParam
 import io.vopenia.api.rooms.models.ApiRecordingMode
 import io.vopenia.api.rooms.models.ApiRemoveParticipantParam
 import io.vopenia.api.rooms.models.ApiRoom
+import io.vopenia.api.rooms.models.RaiseHandParam
 import io.vopenia.api.rooms.models.ApiStartRecordingParam
 import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
 import io.vopenia.api.rooms.models.InviteEmails
@@ -228,6 +229,23 @@ class ApiRooms(
     ): ApiOperationResponse = wrapper.post(
         "rooms/$id/remove-participant/",
         ApiRemoveParticipantParam(participantIdentity)
+    )
+
+    /**
+     * Raise or lower the CURRENT participant's hand via the backend `toggle-hand`
+     * endpoint, authenticated by the LiveKit [token] (the deployed backend revokes
+     * `canUpdateOwnMetadata`, so clients cannot write the `handRaisedAt` attribute
+     * directly). The participant is identified from the token claims server-side.
+     * Mirrors Meet Web `updateRaiseHand.ts`.
+     */
+    suspend fun toggleHand(
+        id: String,
+        raised: Boolean,
+        token: String
+    ): ApiOperationResponse = wrapper.postWithBearer(
+        "rooms/$id/toggle-hand/",
+        RaiseHandParam(raised),
+        token
     )
 
     @Serializable
