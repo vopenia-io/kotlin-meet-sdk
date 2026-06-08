@@ -856,7 +856,12 @@ data class Room(
      */
     suspend fun refreshDisplayName(displayName: String) {
         if (currentRequestEntryManager != null) return
-        session.api.rooms.room(slug, displayName)?.let { internalRoom = it }
+        // Best-effort (see kdoc): room() now propagates non-404 errors, so guard the
+        // refetch — a failed re-mint must leave the existing token untouched so
+        // connect still proceeds.
+        runCatching { session.api.rooms.room(slug, displayName) }
+            .getOrNull()
+            ?.let { internalRoom = it }
     }
 
     suspend fun connect(enableMicrophone: Boolean = true) {

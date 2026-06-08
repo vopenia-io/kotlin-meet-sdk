@@ -1,14 +1,18 @@
 package io.vopenia.api.rooms
 
 import io.ktor.client.HttpClient
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.encodeURLQueryComponent
 import io.vopenia.api.AuthenticationInformation
+import io.vopenia.api.rooms.models.ApiAccess
 import io.vopenia.api.rooms.models.ApiMuteParticipantParam
 import io.vopenia.api.rooms.models.ApiOperationResponse
 import io.vopenia.api.rooms.models.ApiPatchRoomParam
 import io.vopenia.api.rooms.models.ApiRecordingMode
 import io.vopenia.api.rooms.models.ApiRemoveParticipantParam
 import io.vopenia.api.rooms.models.ApiRoom
+import io.vopenia.api.rooms.models.ApiRoomAccessLevel
+import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.RaiseHandParam
 import io.vopenia.api.rooms.models.ApiStartRecordingParam
 import io.vopenia.api.rooms.models.ApiUpdateParticipantParam
@@ -19,8 +23,11 @@ import io.vopenia.api.rooms.models.RequestEntryParameter
 import io.vopenia.api.rooms.models.RoomEnterParameter
 import io.vopenia.api.rooms.models.WaitingParticipants
 import io.vopenia.api.utils.AbstractApi
+import io.vopenia.api.utils.ApiException
 import io.vopenia.api.utils.Page
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 class ApiRooms(
     client: HttpClient,
@@ -46,9 +53,60 @@ class ApiRooms(
             ?.takeIf { it.isNotBlank() }
             ?.let { "?username=${it.encodeURLQueryComponent()}" }
             ?: ""
-        wrapper.get("rooms/${slug}$query")
-    } catch (err: Throwable) {
-        null
+        // Decode into a LENIENT DTO. For an unregistered (ad-hoc) room the backend
+        // returns 200 with {id:null, livekit:{room:slug,token,...}} and OMITS
+        // name/slug/access_level/is_administrable (ALLOW_UNREGISTERED_ROOMS). A
+        // strict ApiRoom (all those fields non-null) cannot decode that body and
+        // would throw; normalize it into a complete, connectable ApiRoom — mirroring
+        // Meet Web, which joins purely on the returned livekit token regardless of id.
+        // Registered rooms come back fully populated and pass straight through.
+        wrapper.get<ApiRoomResponse>("rooms/${slug}$query").toApiRoom(requestedSlug = slug)
+    } catch (err: ApiException) {
+        // A genuine 404 (room absent AND unregistered rooms disabled) -> null so the
+        // caller may decide to create. Every OTHER failure (auth, transport, 5xx)
+        // must propagate: the previous catch(Throwable){null} swallowed them all,
+        // so a valid-but-unparsed token response looked like "not found" and callers
+        // wrongly fell through to creating the room (which a guest cannot do).
+        if (err.status == HttpStatusCode.NotFound) null else throw err
+    }
+
+    /**
+     * Lenient mirror of the room GET response. All fields are optional so it can
+     * decode BOTH the full registered-room body and the minimal unregistered-room
+     * body {id:null, livekit:{...}}. Normalized into a complete [ApiRoom] by
+     * [toApiRoom].
+     */
+    @Serializable
+    internal data class ApiRoomResponse(
+        val id: String? = null,
+        val name: String? = null,
+        val slug: String? = null,
+        val configuration: JsonElement? = null,
+        @SerialName("access_level")
+        val accessLevel: ApiRoomAccessLevel? = null,
+        val accesses: List<ApiAccess> = emptyList(),
+        val livekit: Livekit? = null,
+        @SerialName("is_administrable")
+        val isAdministrable: Boolean = false,
+    )
+
+    private fun ApiRoomResponse.toApiRoom(requestedSlug: String): ApiRoom {
+        // For an unregistered room the backend sets livekit.room to the slug and
+        // leaves id/name/slug null. Use the slug we requested as the stable
+        // identifier so the Room is connectable (connect() only needs livekit
+        // url+token; id/slug are used by lobby/admin ops that don't apply to a
+        // directly-connectable public room).
+        val effectiveSlug = slug ?: livekit?.room ?: requestedSlug
+        return ApiRoom(
+            id = id ?: effectiveSlug,
+            name = name ?: effectiveSlug,
+            slug = effectiveSlug,
+            configuration = configuration,
+            accessLevel = accessLevel ?: ApiRoomAccessLevel.Public,
+            accesses = accesses,
+            livekit = livekit,
+            isAdministrable = isAdministrable,
+        )
     }
 
     /**
