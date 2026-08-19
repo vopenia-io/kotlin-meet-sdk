@@ -12,8 +12,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ApiRecordingRoom(
     val id: String,
-    val name: String,
-    val slug: String,
+    // Decode-lenient: display fields default so a slimmer serializer variant
+    // cannot kill the recordings list (see ApiRoom.is_administrable incident).
+    val name: String = "",
+    val slug: String = "",
     @SerialName("access_level")
     val accessLevel: ApiRoomAccessLevel? = null
 )

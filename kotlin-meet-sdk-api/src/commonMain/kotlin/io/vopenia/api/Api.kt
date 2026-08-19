@@ -9,6 +9,29 @@ import io.vopenia.api.rooms.ApiRooms
 import io.vopenia.api.users.ApiUsers
 import kotlinx.serialization.json.Json
 
+// Single source of truth for the wire (de)serialization settings — also exercised
+// directly by unit tests so decode-leniency regressions are caught offline.
+//
+// explicitNulls = false is REQUIRED: partial-update DTOs like ApiPatchRoomParam
+// leave name/access_level null to mean "leave unchanged". With the default
+// (explicitNulls = true) those nulls are serialized and the Django backend rejects
+// e.g. `name: null` with a 400 on PATCH rooms/{id}/ (host-commands publish
+// toggles). Meet Web sends only the changed keys; this matches that contract.
+//
+// ignoreUnknownKeys + coerceInputValues make response decoding resilient to
+// backend drift: added keys are skipped, and an unknown enum value (e.g. a new
+// access_level) or an explicit null on a defaulted field falls back to the
+// property default instead of throwing and killing the whole feature. Response
+// models must pair this with default values on fields the backend may omit
+// (see ApiRoom.is_administrable — a Play-review-breaking crash).
+internal val VopeniaApiJson = Json {
+    explicitNulls = false
+    encodeDefaults = true
+    ignoreUnknownKeys = true
+    coerceInputValues = true
+    prettyPrint = true
+}
+
 class Api(
     prefix: String,
     enableHttpLogs: Boolean = false,
@@ -16,18 +39,7 @@ class Api(
 ) {
     private val client = createClient(
         Configuration(
-            // explicitNulls = false is REQUIRED: partial-update DTOs like
-            // ApiPatchRoomParam leave name/access_level null to mean "leave
-            // unchanged". With the default (explicitNulls = true) those nulls are
-            // serialized and the Django backend rejects e.g. `name: null` with a
-            // 400 on PATCH rooms/{id}/ (host-commands publish toggles). Meet Web
-            // sends only the changed keys; this matches that contract.
-            json = Json {
-                explicitNulls = false
-                encodeDefaults = true
-                ignoreUnknownKeys = true
-                prettyPrint = true
-            },
+            json = VopeniaApiJson,
             enableLogs = enableHttpLogs,
         )
     ) {

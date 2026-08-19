@@ -96,7 +96,9 @@ class ApiRooms(
         // identifier so the Room is connectable (connect() only needs livekit
         // url+token; id/slug are used by lobby/admin ops that don't apply to a
         // directly-connectable public room).
-        val effectiveSlug = slug ?: livekit?.room ?: requestedSlug
+        val effectiveSlug = slug
+            ?: livekit?.room?.takeIf { it.isNotBlank() }
+            ?: requestedSlug
         return ApiRoom(
             id = id ?: effectiveSlug,
             name = name ?: effectiveSlug,
