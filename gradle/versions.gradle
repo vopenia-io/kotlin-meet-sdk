@@ -1,8 +1,8 @@
 /* * * * * * * * * * * * * * * * *
  * Default project info
  * * * * * * * * * * * * * * * * */
-def defaultVersion = "0.0.1-alpha5"
-def defaultGroup = "eu.codlab"
+def defaultVersion = "0.0.1-alpha8"
+def defaultGroup = "io.vopenia"
 
 def propSuffix = { prefix, suffixKeyName ->
     return rootProject.properties.containsKey(suffixKeyName)
@@ -12,7 +12,7 @@ def propSuffix = { prefix, suffixKeyName ->
 def repo = "vopenia/kotlin-meet-sdk"
 
 ext {
-    javaVersion = "17"
+    javaVersion = "21"
     prop = { name, defValue ->
         return rootProject.properties.containsKey(name)
                 ? rootProject.properties[name] : defValue

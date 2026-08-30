@@ -4,8 +4,15 @@ import io.vopenia.api.Api
 import io.vopenia.api.rooms.models.ApiRoom
 import io.vopenia.api.rooms.models.Livekit
 import io.vopenia.api.rooms.models.NewRoomParam
+import io.vopenia.sdk.config.ServerCapabilities
+import io.vopenia.sdk.config.toServerCapabilities
+import io.vopenia.sdk.devices.Devices
+import io.vopenia.sdk.recording.Recording
+import io.vopenia.sdk.recording.toRecording
 import io.vopenia.sdk.room.Room
 import io.vopenia.sdk.room.RoomAccessLevel
+import io.vopenia.sdk.user.User
+import io.vopenia.sdk.user.toUser
 import io.vopenia.sdk.utils.AuthenticationInformation
 import io.vopenia.sdk.utils.getAllRooms
 
@@ -24,15 +31,29 @@ class Session(
     }
     private var rooms = mutableListOf<Room>()
 
+    val devices = Devices(api)
+
+    suspend fun me(): User = api.users.me().toUser()
+
+    /**
+     * Fetch the deployment's server capabilities (recording enabled,
+     * transcription, telephony, …). Use this to gate UI features per
+     * deployment — e.g. hide the Record button when
+     * `config().recording.isEnabled == false`.
+     *
+     * Returns a snapshot — call again to refresh. The endpoint is
+     * cheap (single Django view) so re-fetching on app resume is fine.
+     */
+    suspend fun config(): ServerCapabilities = api.config.config().toServerCapabilities()
+
     suspend fun createRoom(
         name: String,
-        accessLevel: RoomAccessLevel
+        accessLevel: RoomAccessLevel? = null
     ): Room {
         val apiRoom = api.rooms.createRoom(
             NewRoomParam(
                 name,
-                configuration = "",
-                accessLevel = accessLevel.toApi()
+                accessLevel = accessLevel?.toApi()
             )
         )
 
@@ -94,6 +115,27 @@ class Session(
             )
         )
     )
+
+    /**
+     * List recordings owned by the current user. Pagination is one-based —
+     * page 0 returns the first page.
+     */
+    suspend fun recordings(page: Int = 0): List<Recording> {
+        val response = if (page == 0) api.recordings.recordings()
+        else api.recordings.recordings(page)
+        return response.results.map { it.toRecording() }
+    }
+
+    /**
+     * Fetch a single recording by id. Returns null if not found / not authorised.
+     */
+    suspend fun recording(id: String): Recording? =
+        api.recordings.recording(id)?.toRecording()
+
+    /**
+     * Delete a recording. Only allowed when the recording is in a final state.
+     */
+    suspend fun deleteRecording(id: String) = api.recordings.deleteRecording(id)
 
     private fun checkAppendRoom(apiRoom: ApiRoom): Room {
         val existing = rooms.find { it.id == apiRoom.id }

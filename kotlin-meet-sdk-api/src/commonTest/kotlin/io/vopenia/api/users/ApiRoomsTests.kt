@@ -7,6 +7,7 @@ import io.vopenia.api.rooms.models.ApiRequestEntryStatus
 import io.vopenia.api.rooms.models.ApiRoomAccessLevel
 import io.vopenia.api.utils.GetTokens
 import io.vopenia.api.utils.getAllRooms
+import io.vopenia.api.utils.skipIfTunnelsUnconfigured
 import io.vopenia.konfig.Konfig
 import korlibs.time.DateTime
 import kotlinx.coroutines.test.runTest
@@ -44,6 +45,7 @@ class ApiRoomsTests {
 
     @Test
     fun testRooms() = runTest {
+        if (skipIfTunnelsUnconfigured("testRooms")) return@runTest
         // passing test means that we won't have creds or serialization issues for now
         var rooms = getAllRooms(apiOwnerMeet)
 
@@ -52,7 +54,6 @@ class ApiRoomsTests {
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -65,7 +66,6 @@ class ApiRoomsTests {
             newRoom.id,
             NewRoomParam(
                 name = "${newRoom.name}_updated",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -79,6 +79,7 @@ class ApiRoomsTests {
 
     @Test
     fun requestEntry() = runTest {
+        if (skipIfTunnelsUnconfigured("requestEntry")) return@runTest
         listOf(
             Triple(
                 ApiRoomAccessLevel.Public,
@@ -94,7 +95,6 @@ class ApiRoomsTests {
             val newRoom = apiOwnerMeet.rooms.createRoom(
                 NewRoomParam(
                     name = "${DateTime.nowUnixMillisLong()}",
-                    configuration = "",
                     accessLevel = roomVisibility
                 )
             )
@@ -111,10 +111,10 @@ class ApiRoomsTests {
 
     @Test
     fun testInvite() = runTest {
+        if (skipIfTunnelsUnconfigured("testInvite")) return@runTest
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
         )
@@ -133,16 +133,17 @@ class ApiRoomsTests {
 
     @Test
     fun gettingNonExistingRoom() = runTest {
+        if (skipIfTunnelsUnconfigured("gettingNonExistingRoom")) return@runTest
         val room = apiOwnerMeet.rooms.room("doesntexist_${DateTime.nowUnixMillisLong()}")
         assertNull(room)
     }
 
     @Test
     fun testEnterAccepted() = runTest {
+        if (skipIfTunnelsUnconfigured("testEnterAccepted")) return@runTest
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
@@ -172,10 +173,10 @@ class ApiRoomsTests {
 
     @Test
     fun testEnterDenied() = runTest {
+        if (skipIfTunnelsUnconfigured("testEnterDenied")) return@runTest
         val newRoom = apiOwnerMeet.rooms.createRoom(
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Restricted
             )
         )
@@ -203,10 +204,10 @@ class ApiRoomsTests {
 
     @Test
     fun testCreation() = runTest {
+        if (skipIfTunnelsUnconfigured("testCreation")) return@runTest
         val common =
             NewRoomParam(
                 name = "${DateTime.nowUnixMillisLong()}",
-                configuration = "",
                 accessLevel = ApiRoomAccessLevel.Public
             )
 

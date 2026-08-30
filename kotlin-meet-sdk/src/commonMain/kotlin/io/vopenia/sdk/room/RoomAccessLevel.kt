@@ -18,6 +18,6 @@ enum class RoomAccessLevel {
 
 fun ApiRoomAccessLevel.to() = when (this) {
     ApiRoomAccessLevel.Public -> RoomAccessLevel.Public
-    ApiRoomAccessLevel.Trusted -> RoomAccessLevel.Public
-    ApiRoomAccessLevel.Restricted -> RoomAccessLevel.Public
+    ApiRoomAccessLevel.Trusted -> RoomAccessLevel.Trusted
+    ApiRoomAccessLevel.Restricted -> RoomAccessLevel.Restricted
 }

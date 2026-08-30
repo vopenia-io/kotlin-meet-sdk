@@ -3,6 +3,7 @@ package io.vopenia.api.users
 import io.vopenia.api.utils.GetTokens
 import io.vopenia.api.Api
 import io.vopenia.api.AuthenticationInformation
+import io.vopenia.api.utils.skipIfTunnelsUnconfigured
 import io.vopenia.konfig.Konfig
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -21,6 +22,7 @@ class ApiUserTests {
 
     @Test
     fun testUsers() = runTest {
+        if (skipIfTunnelsUnconfigured("testUsers")) return@runTest
         val answer = api.users.users()
 
         // passing test means that we won't have creds or serialization issues for now
@@ -29,6 +31,7 @@ class ApiUserTests {
 
     @Test
     fun testMe() = runTest {
+        if (skipIfTunnelsUnconfigured("testMe")) return@runTest
         val answer = api.users.me()
 
         // passing test means that we won't have creds or serialization issues for now

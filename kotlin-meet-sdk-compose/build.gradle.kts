@@ -3,7 +3,7 @@ plugins {
     alias(additionals.plugins.android.library)
     alias(additionals.plugins.jetbrains.compose)
     alias(additionals.plugins.compose.compiler)
-    // alias(additionals.plugins.kotlin.cocoapods)
+    id("org.jetbrains.kotlin.native.cocoapods")
     id("jvmCompat")
     id("iosSimulatorConfiguration")
     id("publication")
@@ -18,28 +18,36 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
-    /*
     cocoapods {
         summary = "UI Compose library for meet"
-        homepage = "Link to the Shared Module homepage"
+        homepage = "https://vopenia.io"
         version = "1.0"
+        specRepos {
+            url("https://github.com/livekit/podspecs")
+        }
         ios.deploymentTarget = "16.0"
         osx.deploymentTarget = "16.0"
         framework {
             baseName = "meet-compose"
-            isStatic = false
-            transitiveExport = true
+            isStatic = true
         }
 
         pod("LiveKitClient") {
             version = "2.6.0"
-            source = path(rootProject.file("../LiveKitClient"))
             moduleName = "LiveKitClient"
             packageName = "LiveKitClient"
             extraOpts += listOf("-compiler-option", "-fmodules")
         }
+
+        pod("LiveKitClientKotlin") {
+            version = "2.6.0"
+            source = path(rootProject.file("../LiveKitClientKotlin"))
+            moduleName = "LiveKitClientKotlin"
+            packageName = "LiveKitClientKotlin"
+            extraOpts += listOf("-compiler-option", "-fmodules")
+            useInteropBindingFrom("LiveKitClient")
+        }
     }
-     */
 
     sourceSets {
         commonMain.dependencies {

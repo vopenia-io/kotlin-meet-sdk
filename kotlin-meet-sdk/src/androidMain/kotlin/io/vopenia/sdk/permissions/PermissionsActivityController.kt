@@ -1,7 +1,7 @@
 package io.vopenia.sdk.permissions
 
 import androidx.fragment.app.FragmentActivity
-import com.vopenia.livekit.PermissionsActivityController as PAC
+import io.vopenia.livekit.PermissionsActivityController as PAC
 
 object PermissionsActivityController {
     fun setActivity(activity: FragmentActivity) {

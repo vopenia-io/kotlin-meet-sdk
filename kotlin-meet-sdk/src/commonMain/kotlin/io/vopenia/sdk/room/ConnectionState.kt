@@ -1,6 +1,6 @@
 package io.vopenia.sdk.room
 
-import com.vopenia.livekit.events.ConnectionState as CS
+import io.vopenia.livekit.events.ConnectionState as CS
 
 sealed class ConnectionState {
     data object Default : ConnectionState()
@@ -14,7 +14,7 @@ sealed class ConnectionState {
     class ConnectionError(val error: Throwable) : ConnectionState()
 }
 
-fun com.vopenia.livekit.events.ConnectionState.to() = when (this) {
+fun io.vopenia.livekit.events.ConnectionState.to() = when (this) {
     CS.Connected -> ConnectionState.Connected
     CS.Connecting -> ConnectionState.Connecting
     CS.Default -> ConnectionState.Default

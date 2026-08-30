@@ -13,7 +13,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import io.vopenia.api.AuthenticationInformation
 
 class AbstractApi(
@@ -34,7 +33,8 @@ class AbstractApi(
 
         var cookies = listOf(
             "csrftoken" to bearer?.csrftoken,
-            "sessionid" to bearer?.meetSessionId
+            "sessionid" to bearer?.meetSessionId,
+            "meet_sessionid" to bearer?.meetSessionId
         ).filter { it.second != null }
             .joinToString(";") { "${it.first}=${it.second}" }
 
@@ -59,9 +59,7 @@ class AbstractApi(
             buildCookie(bearer)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -78,9 +76,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
     }
 
     suspend inline fun <reified R, reified T> post(
@@ -96,9 +92,32 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
+        request.ensureSuccess(endpoint)
+
+        return request.body()
+    }
+
+    /**
+     * POST authenticated by a LiveKit token in the `Authorization: Bearer` header
+     * (consumed by the backend `LiveKitTokenAuthentication`), in addition to the
+     * usual session cookies. Used by endpoints that authenticate the participant
+     * via their LiveKit token rather than the Meet session (e.g. `toggle-hand`).
+     */
+    suspend inline fun <reified R, reified T> postWithBearer(
+        endpoint: String,
+        body: R,
+        bearerToken: String
+    ): T {
+        val bearer = getAuthent()
+
+        val request = client.post("$prefix/$endpoint") {
+            buildCookie(bearer)
+            header("Authorization", "Bearer $bearerToken")
+            contentType(ContentType.Application.Json)
+            setBody(body)
         }
+
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -115,9 +134,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -134,9 +151,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
@@ -151,9 +166,7 @@ class AbstractApi(
             contentType(ContentType.Application.Json)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
     }
 
     suspend inline fun <reified R, reified T> delete(
@@ -168,9 +181,7 @@ class AbstractApi(
             setBody(body)
         }
 
-        if (!request.status.isSuccess()) {
-            throw IllegalStateException("Issue with $endpoint, answer ${request.status}")
-        }
+        request.ensureSuccess(endpoint)
 
         return request.body()
     }
