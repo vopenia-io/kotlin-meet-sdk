@@ -2,6 +2,8 @@ package io.vopenia.sdk.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.vopenia.livekit.participant.track.IVideoTrack
 import io.vopenia.sdk.room.Room
 import io.vopenia.sdk.utils.RoomProxyAccessor
@@ -13,6 +15,8 @@ fun VideoView(
     track: IVideoTrack,
     scaleType: ScaleType,
     isMirror: Boolean = false,
+    // Rounds the renderer itself - a Compose clip does not reach it on iOS.
+    cornerRadius: Dp = 0.dp,
 ) {
     io.vopenia.livekit.compose.VideoView(
         modifier = modifier,
@@ -22,6 +26,7 @@ fun VideoView(
             ScaleType.Fill -> io.vopenia.livekit.compose.ScaleType.Fill
             ScaleType.Fit -> io.vopenia.livekit.compose.ScaleType.Fit
         },
-        isMirror = isMirror
+        isMirror = isMirror,
+        cornerRadius = cornerRadius,
     )
 }
