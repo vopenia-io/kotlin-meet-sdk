@@ -84,10 +84,17 @@ private const val MEET_SCREEN_RECORDING_STOPPED = "screenRecordingStopped"
 // ("CAMERA", "MICROPHONE", "SCREEN_SHARE", "SCREEN_SHARE_AUDIO").
 private const val CAN_PUBLISH_SOURCES_KEY = "can_publish_sources"
 
-// LiveKit participant attribute the Meet backend sets to "true" on admin /
-// owner participants. Filtered out when iterating remotes for the host
-// `update-participant` step — admins keep their own permissions.
-private const val ROOM_ADMIN_ATTRIBUTE = "room_admin"
+// Admins and owners are skipped when iterating remotes for the host
+// `update-participant` step: they keep their own permissions. The Meet backend
+// gives the role in the `room_role` token attribute (owner / administrator /
+// member); earlier backends set `room_admin` to "true" instead.
+private const val ROOM_ROLE_ATTRIBUTE = "room_role"
+private const val LEGACY_ROOM_ADMIN_ATTRIBUTE = "room_admin"
+
+private fun Map<String, String>.isRoomModerator(): Boolean =
+    this[ROOM_ROLE_ATTRIBUTE] == "owner" ||
+        this[ROOM_ROLE_ATTRIBUTE] == "administrator" ||
+        this[LEGACY_ROOM_ADMIN_ATTRIBUTE] == "true"
 
 private fun kotlinx.serialization.json.JsonElement?.readCanPublishSources(): Set<Source> {
     val array = (this as? JsonObject)?.get(CAN_PUBLISH_SOURCES_KEY) as? JsonArray
@@ -391,7 +398,7 @@ data class Room(
         )
         remoteParticipant.value.forEach { remote ->
             val identity = remote.identity ?: return@forEach
-            if (remote.state.value.attributes[ROOM_ADMIN_ATTRIBUTE] == "true") return@forEach
+            if (remote.state.value.attributes.isRoomModerator()) return@forEach
             runCatching {
                 session.api.rooms.updateParticipant(
                     id,
