@@ -29,6 +29,7 @@ import io.vopenia.sdk.room.recording.ToolStartRequest
 import io.vopenia.sdk.room.recording.ToolStartRequestHandle
 import io.vopenia.sdk.room.recording.ToolStartRequestedPayload
 import io.vopenia.sdk.room.recording.RecordingHandle
+import io.vopenia.sdk.room.recording.RecordingMetadata
 import io.vopenia.sdk.room.recording.RecordingMode
 import io.vopenia.sdk.room.recording.RecordingState
 import io.vopenia.sdk.room.transcription.TranscriptionHandle
@@ -487,6 +488,13 @@ data class Room(
      * local participant joins mid-recording.
      */
     val isRecordingActive: StateFlow<Boolean> = liveKitRoom.isRecording
+
+    /**
+     * Recording mode and status from the room metadata, the source Meet Web's recording badge
+     * uses. Unlike [isRecordingActive], it turns to `Saving` as soon as a recording is stopped.
+     */
+    val recordingMetadata: StateFlow<RecordingMetadata> =
+        liveKitRoom.metadata.map(scope) { RecordingMetadata.parse(it) }
 
     private val currentRecordingModeFlow: MutableStateFlow<RecordingMode?> =
         MutableStateFlow(null)
